@@ -815,6 +815,20 @@ div.sc-b{cursor:default}
 .login.rec .rec-only-hide{display:none!important}
 .login.rec #loginF>.field:first-child{display:none}
 .login.rec .login-in::before{content:"📣 Aparelho da recepção";display:block;text-align:center;font-weight:700;color:var(--brass);margin-bottom:-14px}
+.es-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.es2{display:grid;justify-items:center;text-align:center;gap:3px;padding:12px 6px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.es2 span{font-size:26px;line-height:1}
+.es2 b{font-size:15px}
+.es2 small{font-size:11.5px;color:var(--ink-3);line-height:1.25}
+.es2.on.agora{background:var(--r);border-color:var(--r);color:#fff}
+.es2.on.hoje{background:var(--y);border-color:var(--y);color:#1a1200}
+.es2.on.depois{background:var(--g);border-color:var(--g);color:#fff}
+.es2.on small{color:inherit;opacity:.85}
+.parada{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:16px;border:1.5px dashed var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.parada span{font-size:22px}
+.parada div{display:grid}
+.parada small{font-size:12.5px;color:var(--ink-3)}
+.parada.on{border-style:solid;border-color:var(--r);background:var(--r-soft)}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1447,9 +1461,9 @@ const PROBS=[
  {k:"garagem",i:"🚧",t:"Garagem / portão",tit:"Problema na garagem ou portão",c:"portoes"},
  {k:"outro",i:"🧰",t:"Outra coisa",tit:"Problema relatado pela recepção",c:"outros"}];
 const ESTADOS=[
- {k:"hosp",i:"🔴",t:"Tem convidado na suíte",d:"Resolver agora",p:1,b:false},
- {k:"parada",i:"🚫",t:"Não pode vender a suíte",d:"Fica fora de venda até resolver",p:1,b:true,soSuite:true},
- {k:"livre",i:"🟡",t:"Dá para usar normalmente",d:"Resolver hoje, sem parar",p:3,b:false}];
+ {k:"agora",i:"🔴",t:"Urgente",d:"Precisa resolver agora",p:1,dias:0},
+ {k:"hoje",i:"🟡",t:"Ainda hoje",d:"Pode esperar algumas horas",p:3,dias:0},
+ {k:"depois",i:"🟢",t:"Quando der",d:"Não atrapalha o uso",p:4,dias:3}];
 function probOf(o){ return PROBS.find(x=>x.k===o.probRec) || PROBS.find(x=>x.c===o.categoria) || PROBS[PROBS.length-1]; }
 function tecnicosDaUnidade(){ return S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!(e.unidades||[]).length||e.unidades.includes(curUnit().id))); }
 function ding(n){ try{ const C=window.AudioContext||window.webkitAudioContext; if(!C) return; const ctx=ding.c||(ding.c=new C()); const t=ctx.currentTime;
@@ -1491,12 +1505,13 @@ function vRecepcao(){
   return h;
 }
 function sheetCham(F){
-  const isS=(F.local||"").startsWith("S:"), ests=ESTADOS.filter(e=>!e.soSuite||isS||!F.local);
+  const isS=(F.local||"").startsWith("S:");
   let h='<div class="sheet-h"><div><h2 id="shT">📣 Chamar a manutenção</h2></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b rel">';
   h+='<div class="rel-n"><b>1</b> Onde?</div><div class="rel-grid">'+suites().map(n=>'<button class="rel-s'+(F.local==="S:"+n?" on":"")+'" data-act="chamSet" data-f="local" data-v="S:'+n+'">'+n+'</button>').join("")+'</div>'+
     '<div class="rel-areas">'+S.cfg.areas.filter(a=>a!=="Todas as suítes").map(a=>'<button class="rel-a'+(F.local==="A:"+a?" on":"")+'" data-act="chamSet" data-f="local" data-v="A:'+esc(a)+'">'+esc(a)+'</button>').join("")+'</div>';
   h+='<div class="rel-n"><b>2</b> O que aconteceu?</div><div class="pb-grid">'+PROBS.map(p=>'<button class="pb'+(F.prob===p.k?" on":"")+'" data-act="chamSet" data-f="prob" data-v="'+p.k+'"><span>'+p.i+'</span>'+esc(p.t)+'</button>').join("")+'</div>';
-  h+='<div class="rel-n"><b>3</b> Como está '+(isS?'a suíte':'agora')+'?</div><div class="es-list">'+ests.map(e=>'<button class="es'+(F.estado===e.k?" on":"")+'" data-act="chamSet" data-f="estado" data-v="'+e.k+'"><span>'+e.i+'</span><b>'+esc(e.t)+'</b><small>'+esc(e.d)+'</small></button>').join("")+'</div>';
+  h+='<div class="rel-n"><b>3</b> Qual a pressa?</div><div class="es-row">'+ESTADOS.map(e=>'<button class="es2 '+e.k+(F.estado===e.k?" on":"")+'" data-act="chamSet" data-f="estado" data-v="'+e.k+'"><span>'+e.i+'</span><b>'+esc(e.t)+'</b><small>'+esc(e.d)+'</small></button>').join("")+'</div>'+
+    (isS?'<button class="parada'+(F.parada?" on":"")+'" data-act="chamParada"><span>'+(F.parada?"☑️":"⬜")+'</span><div><b>🚫 Tirar a suíte de venda</b><small>Marque só se a suíte não pode ser usada até resolver</small></div></button>':'');
   const fotos=F.pend||[];
   h+='<div class="rel-n"><b>4</b> Detalhe <small>(se quiser)</small></div><div class="ch-extra">'+
     fotos.map((p,i)=>'<div class="ft"><img src="'+esc(p.url)+'" alt=""><button class="ft-x" data-act="unpend" data-i="'+i+'" aria-label="Tirar foto">×</button></div>').join("")+Array.from({length:F.up||0}).map(()=>'<div class="ft"><span class="ft-l"></span></div>').join("")+
@@ -1506,7 +1521,7 @@ function sheetCham(F){
   const tecs=tecnicosDaUnidade(), pb=PROBS.find(p=>p.k===F.prob), dest=pb?((tecs.find(e=>e.cats.includes(pb.c))||tecs[0]||{}).nome||""):"";
   const pronto=F.local&&F.prob&&F.estado&&!(F.up>0);
   h+='<button class="sp-btn go send" data-act="chamSend"'+(pronto?"":" disabled")+'>'+(F.up>0?'<span class="spin"></span> CARREGANDO FOTO':'📣 ENVIAR'+(dest?' PARA '+esc(first(dest).toUpperCase()):' PARA A MANUTENÇÃO'))+'</button>'+
-    (!pronto&&!(F.up>0)?'<p class="hint" style="text-align:center">'+(!F.local?"Escolha onde é":!F.prob?"Escolha o que aconteceu":"Escolha como está a suíte")+'</p>':'');
+    (!pronto&&!(F.up>0)?'<p class="hint" style="text-align:center">'+(!F.local?"Escolha onde é":"Escolha o que aconteceu")+'</p>':'');
   return h+'</div>';
 }
 /* ===================== OS ===================== */
@@ -2299,17 +2314,19 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
-  chamSet(el){ const F=S.form, f=el.dataset.f; F[f]=el.dataset.v; if(f==="local"&&!F.local.startsWith("S:")&&F.estado==="parada") F.estado=""; haptic(); refreshSheet();
+  chamParada(){ const F=S.form; F.parada=!F.parada; if(F.parada) F.estado="agora"; haptic(); refreshSheet(); },
+  chamSet(el){ const F=S.form, f=el.dataset.f; F[f]=el.dataset.v; if(f==="local"&&!F.local.startsWith("S:")) F.parada=false; haptic(); refreshSheet();
     if(f!=="estado"){ const nx=document.querySelector(f==="local"?".pb-grid":".es-list"); if(nx) setTimeout(()=>nx.scrollIntoView({behavior:"smooth",block:"center"}),60); } },
   async chamSend(){ const F=S.form; const pb=PROBS.find(p=>p.k===F.prob), es=ESTADOS.find(e=>e.k===F.estado); if(!F.local||!pb||!es) return;
     const tecs=tecnicosDaUnidade(), resp=((tecs.find(e=>e.cats.includes(pb.c))||tecs[0])||{}).nome||"";
     const raw=(F.raw||"").trim();
-    const o=newOS({status:"aberta", origem:"recepcao", probRec:pb.k, abertoPor:S.me||"Recepção", titulo:pb.tit, descricao:raw, local:F.local, categoria:pb.c, prioridade:es.p, bloqueiaSuite:!!es.b&&F.local.startsWith("S:"), responsavel:resp, prazo:todayStr(), estadoRec:es.k});
+    const parada=!!F.parada&&F.local.startsWith("S:");
+    const o=newOS({status:"aberta", origem:"recepcao", probRec:pb.k, abertoPor:S.me||"Recepção", titulo:pb.tit, descricao:raw, local:F.local, categoria:pb.c, prioridade:parada?1:es.p, bloqueiaSuite:parada, responsavel:resp, prazo:addDays(todayStr(),es.dias), estadoRec:es.k});
     const btn=document.querySelector('[data-act="chamSend"]'); if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span> ENVIANDO'; }
     try{ for(const p of (F.pend||[])){ const f=await uploadFoto(p.blob); S.urls[f.path]=p.url; o.fotos.push(f); } F.pend=[]; }
     catch(e){ toast("Sem conexão para enviar a foto. Tente de novo."); if(btn){ btn.disabled=false; btn.textContent="📣 ENVIAR"; } return; }
     o.numero=nextNum(); o.criadoEm=nowISO(); delete o._prazoAuto;
-    hist(o,"📣 Chamado da recepção ("+es.t.toLowerCase()+")"+(resp?" para "+resp:""));
+    hist(o,"📣 Chamado da recepção ("+es.t.toLowerCase()+(parada?", suíte fora de venda":"")+")"+(resp?" para "+resp:""));
     S.form=null; write("os",o); closeSheet(); haptic(); ding(1);
     toast("📣 Enviado"+(resp?" para "+first(resp):"")+"! Acompanhe aqui.", true); },
   async chamCancel(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; if(!await ask("Cancelar o chamado de "+localLabel(o.local)+"?","Cancelar chamado",true)) return;
@@ -2420,8 +2437,8 @@ const A = {
     closeSheet(); toast("Senha trocada", true); },
   copyLogin(el){ const p=S.cfg.equipe[+el.dataset.i]; if(p) copy(loginEmail(p.cpf)); },
   tab(el){ S.tab=el.dataset.tab; render(); window.scrollTo({top:0}); },
-  new(){ if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:""}); return; } if(!isChefe()){ openSheet({type:"rel", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}}); return; } openSheet({type:"os", mode:"new", o:newOS({}), raw:"", parsed:{}}); },
-  newAt(el){ if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:el.dataset.local}); return; } const l=el.dataset.local; openSheet({type:"os", mode:"new", o:newOS(Object.assign({local:l}, isChefe()?{}:{status:"triagem"})), raw:"", parsed:{}, touched:{local:true}}); },
+  new(){ if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:"", estado:"hoje"}); return; } if(!isChefe()){ openSheet({type:"rel", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}}); return; } openSheet({type:"os", mode:"new", o:newOS({}), raw:"", parsed:{}}); },
+  newAt(el){ if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:el.dataset.local, estado:"hoje"}); return; } const l=el.dataset.local; openSheet({type:"os", mode:"new", o:newOS(Object.assign({local:l}, isChefe()?{}:{status:"triagem"})), raw:"", parsed:{}, touched:{local:true}}); },
   open(el){ editOS(el.dataset.id); },
   local(el){ openSheet({type:"local", local:el.dataset.local}); },
   foto(el){ const src=S.urls[el.dataset.p]; if(src) openSheet(Object.assign({type:"foto", src, back:S.form})); },
