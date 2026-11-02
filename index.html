@@ -829,6 +829,18 @@ div.sc-b{cursor:default}
 .parada div{display:grid}
 .parada small{font-size:12.5px;color:var(--ink-3)}
 .parada.on{border-style:solid;border-color:var(--r);background:var(--r-soft)}
+.arq-l{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;margin-top:18px;padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);font-size:15px;color:var(--ink-2)}
+.arq-l:active{transform:scale(.98)}
+.arq-t{flex:1}
+.arq-t b{color:var(--g)} .arq-t b.c{color:var(--ink-3)}
+.arq-v{color:var(--brass);font-weight:700;font-size:14px;white-space:nowrap}
+.arq-i{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.arq-i.c{opacity:.75}
+.arq-b{display:grid;gap:2px;cursor:pointer;min-width:0}
+.arq-b b{font-weight:600}
+.arq-b span{font-size:13px;color:var(--ink-2)}
+.arq-b small{font-size:12.5px;color:var(--ink-3)}
+.arq-i .sd-b{min-height:38px;padding:8px 12px}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -987,7 +999,9 @@ function localLabel(l){ if(!l) return "Sem local"; return l.startsWith("S:") ? "
 function inUnit(o){ const first=S.cfg.unidades[0]?.id; return (o.unidade||first)===curUnit().id; }
 function isOpen(o){ return o.status!=="concluida"; }
 function names(){ return S.cfg.equipe.map(e=>e.nome); }
-function personFor(catId){ return S.cfg.equipe.find(e=>e.cats.includes(catId)); }
+function tecsUnidade(){ const u=(typeof curUnit==="function")?curUnit().id:null; return S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!u||!(e.unidades||[]).length||e.unidades.includes(u))); }
+function personFor(catId){ return tecsUnidade().find(e=>e.cats.includes(catId)); }
+function tecFor(catId){ const t=tecsUnidade(); return t.find(e=>e.cats.includes(catId)) || t[0] || null; }
 function personByName(n){ return S.cfg.equipe.find(e=>e.nome===n); }
 function first(n){ return String(n||"").split(" ")[0]; }
 function toastUndo(msg, fn){ S.undo=fn; const t=document.getElementById("toast"); t.innerHTML='<span class="tk">✓</span>'+esc(msg)+'<button class="undo" data-act="undo">Desfazer</button>'; t.classList.add("on","act"); clearTimeout(toast._t); toast._t=setTimeout(()=>{ t.classList.remove("on","act"); S.undo=null; },5000); }
@@ -1432,7 +1446,7 @@ function sheetFim(F){
 function prevItens(p){ if(!p) return []; if(p.local==="A:Todas as suítes") return suites().map(n=>"S:"+n); return p.local?[p.local]:[]; }
 function prevMulti(p){ return prevItens(p).length>1; }
 function prevProg(p){ const it=prevItens(p), f=(p.ciclo&&p.ciclo.feitos)||{}; return {n:it.filter(l=>f[l]).length, t:it.length}; }
-function podeReabrir(o){ return o && o.status==="concluida" && (isChefe() || (S.me && o.responsavel===S.me && o.concluidoEm && localDate(o.concluidoEm)===todayStr() && o.solucao!=="Não procede")); }
+function podeReabrir(o){ return o && o.status==="concluida" && !isCancel(o) && (isChefe() || (S.me && o.responsavel===S.me && o.concluidoEm && localDate(o.concluidoEm)===todayStr() && o.solucao!=="Não procede")); }
 function sheetPrevItens(F){
   const p=S.prev.find(x=>x.id===F.id); if(!p) return "";
   const it=prevItens(p), f=(p.ciclo&&p.ciclo.feitos)||{}, pr=prevProg(p), sel=F.sel||{};
@@ -1501,7 +1515,7 @@ function vRecepcao(){
   h+='<div class="rc-stats"><button data-act="tab" data-tab="suites"><b>'+(list.length-fora)+'</b><span>✅ À venda</span></button><button data-act="tab" data-tab="suites"><b>'+work+'</b><span>🔧 Em manutenção</span></button><button data-act="tab" data-tab="suites" class="'+(fora?"bad":"")+'"><b>'+fora+'</b><span>🚫 Fora de venda</span></button></div>';
   h+='<div class="tt-sub">Chamados em aberto</div>';
   h+= abertos.length ? '<div class="sp-list">'+abertos.map(track).join("")+'</div>' : '<div class="sp-ok"><div>👏</div><b>Nenhum chamado aberto</b><p>Quando acontecer algo, toque em <b>Chamar</b>.</p></div>';
-  if(hoje.length) h+='<div class="tt-sub">Resolvidos hoje</div><div class="sp-list">'+hoje.map(track).join("")+'</div>';
+  h+=arqLinha(hoje.filter(o=>!isCancel(o)).length, hoje.filter(isCancel).length, (hoje.filter(o=>!isCancel(o)).length>1?"resolvidos hoje":"resolvido hoje"));
   return h;
 }
 function sheetCham(F){
@@ -1524,6 +1538,37 @@ function sheetCham(F){
     (!pronto&&!(F.up>0)?'<p class="hint" style="text-align:center">'+(!F.local?"Escolha onde é":"Escolha o que aconteceu")+'</p>':'');
   return h+'</div>';
 }
+/* ===================== HISTÓRICO / ARQUIVO ===================== */
+function isCancel(o){ return !!(o && (o.cancelado || o.solucao==="Cancelado pela recepção" || o.solucao==="Não procede")); }
+function arqBase(){
+  return S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm).filter(o=>
+    S.role==="tecnico" ? o.responsavel===S.me :
+    S.role==="recepcao" ? o.origem==="recepcao" : true);
+}
+function arqLinha(n, nc, hojeTxt){
+  if(!n && !nc) return "";
+  return '<button class="arq-l" data-act="arq"><span>📁</span><span class="arq-t">'+(n?'<b>✓ '+n+'</b> '+(hojeTxt||(n>1?"feitos hoje":"feito hoje")):'')+(n&&nc?' · ':'')+(nc?'<b class="c">'+nc+'</b> cancelado'+(nc>1?'s':''):'')+'</span><span class="arq-v">Ver histórico ›</span></button>';
+}
+function sheetArq(F){
+  const ym=F.ym||todayStr().slice(0,7), [y,m]=ym.split("-").map(Number), cur=ym===todayStr().slice(0,7), view=F.v||"ok";
+  const label=new Date(y,m-1,1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
+  const base=arqBase().filter(o=>localDate(o.concluidoEm).slice(0,7)===ym);
+  const ok=base.filter(o=>!isCancel(o)), canc=base.filter(isCancel), list=(view==="ok"?ok:canc).sort((a,b)=>new Date(b.concluidoEm)-new Date(a.concluidoEm));
+  let h='<div class="sheet-h"><div><h2 id="shT">📁 Histórico</h2><div class="sub" style="font-size:13.5px">'+(S.role==="tecnico"?"O que você terminou":S.role==="recepcao"?"Chamados da recepção":"Todos os serviços")+'</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b">';
+  h+='<div class="month"><button class="mbtn" data-act="arqMes" data-v="-1" aria-label="Mês anterior">‹</button><b>'+esc(label[0].toUpperCase()+label.slice(1))+'</b><button class="mbtn" data-act="arqMes" data-v="1"'+(cur?" disabled":"")+' aria-label="Próximo mês">›</button></div>';
+  h+='<div class="seg" role="group"><button data-act="arqV" data-v="ok" aria-pressed="'+(view==="ok")+'">✓ Feitos ('+ok.length+')</button><button data-act="arqV" data-v="canc" aria-pressed="'+(view==="canc")+'">⛔ Cancelados ('+canc.length+')</button></div>';
+  if(!list.length) return h+'<div class="empty">'+(view==="ok"?"Nada feito":"Nada cancelado")+' em '+esc(label)+'.</div></div>';
+  const by={}; list.forEach(o=>{ (by[localDate(o.concluidoEm)]=by[localDate(o.concluidoEm)]||[]).push(o); });
+  const ontem=addDays(todayStr(),-1);
+  h+=Object.keys(by).sort().reverse().map(d=>{ const dt=new Date(d+"T12:00:00"), nome=d===todayStr()?"Hoje":d===ontem?"Ontem":DOWL[dt.getDay()][0].toUpperCase()+DOWL[dt.getDay()].slice(1)+", "+fmtD(d);
+    return '<div class="hday"><div class="hday-h">'+esc(nome)+'<span>'+by[d].length+'</span></div>'+by[d].map(o=>{
+      const c=isCancel(o), real=o.iniciadoEm&&!c?fmtMin(durMin(o.iniciadoEm,o.concluidoEm)):"";
+      return '<div class="arq-i'+(c?" c":"")+'"><span class="hdot '+(c?"late":"ok")+'">'+(c?"⛔":"✓")+'</span><div class="arq-b" data-act="open" data-id="'+o.id+'" role="button" tabindex="0"><b>'+esc(o.titulo)+'</b>'+
+        '<span>'+esc(localLabel(o.local))+' · '+fmtT(o.concluidoEm)+(o.responsavel&&S.role!=="tecnico"?' · '+esc(first(o.responsavel)):'')+(real?' · levou '+real:'')+(o.origem==="recepcao"&&S.role!=="recepcao"?' · 📣':'')+'</span>'+
+        (c?'<small>'+esc(o.solucao==="Não procede"?"Não procede (gerência)":o.motivoCancel||"Cancelado")+'</small>':o.solucao?'<small>🛠️ '+esc(o.solucao)+'</small>':'')+'</div>'+
+        (!c&&podeReabrir(o)?'<button class="sd-b" data-act="reabrir" data-id="'+o.id+'">↩</button>':'')+'</div>'; }).join("")+'</div>'; }).join("");
+  return h+'</div>';
+}
 /* ===================== OS ===================== */
 function nextNum(){ return S.os.filter(inUnit).reduce((m,o)=>Math.max(m,o.numero||0),0)+1; }
 function newOS(extra){
@@ -1534,7 +1579,7 @@ function newOS(extra){
   }, extra||{});
   if(o.status!=="triagem"){
     if(!o.prazo) o.prazo=addDays(todayStr(), DUE[o.prioridade]);
-    if(!o.responsavel){ const p=personFor(o.categoria); o.responsavel=p ? p.nome : (S.cfg.equipe.length===1 ? S.cfg.equipe[0].nome : ""); }
+    if(!o.responsavel){ const p=tecFor(o.categoria); o.responsavel=p ? p.nome : ""; }
   }
   return o;
 }
@@ -1664,7 +1709,7 @@ function vPainel(){
 
   const f=S.f;
   const filt='<div class="filters"><div class="seg" role="group" aria-label="Situação">'+[["abertas","A fazer"],["concluidas","Histórico"]].map(([k,l])=>'<button data-act="fstatus" data-v="'+k+'" aria-pressed="'+(f.status===k)+'">'+l+'</button>').join("")+'</div>'+
-    '<label class="sr" for="fResp">Responsável</label><select id="fResp" class="sel" data-ch="fresp"><option value="">Toda a equipe</option>'+names().map(p=>'<option value="'+esc(p)+'"'+(f.resp===p?" selected":"")+'>'+esc(p===S.me?"Só as minhas":p)+'</option>').join("")+'</select></div>';
+    '<label class="sr" for="fResp">Responsável</label><select id="fResp" class="sel" data-ch="fresp"><option value="">Toda a equipe</option>'+S.cfg.equipe.filter(e=>e.papel!=="recepcao").map(e=>e.nome).map(p=>'<option value="'+esc(p)+'"'+(f.resp===p?" selected":"")+'>'+esc(p===S.me?"Só as minhas":p)+'</option>').join("")+'</select></div>';
   if(f.status==="concluidas") return h+'<section class="sec">'+'<div class="sec-h"><h2>Histórico</h2></div>'+filt+vHist()+'</section>';
   let list=q; if(f.resp) list=list.filter(x=>x.o.responsavel===f.resp);
   h+='<section class="sec"><div class="sec-h"><h2>'+(f.urg?UICON[f.urg]+" "+URG[f.urg]:(f.resp&&f.resp===S.me?"Suas tarefas":"Pendências"))+'</h2>'+(f.urg?'<button class="btn sm ghost" data-act="furg" data-v="'+f.urg+'">Mostrar todas</button>':'')+'</div>'+filt;
@@ -1684,7 +1729,7 @@ function vPendente(){
 }
 function histOS(){
   const ym=S.hm||todayStr().slice(0,7);
-  let done=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&o.solucao!=="Não procede");
+  let done=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&!isCancel(o));
   if(S.f.resp) done=done.filter(o=>o.responsavel===S.f.resp);
   return done.sort((a,b)=>new Date(b.concluidoEm)-new Date(a.concluidoEm));
 }
@@ -1701,9 +1746,10 @@ function vHist(){
   const ok=os.filter(noPrazo).length, comT=os.filter(o=>o.iniciadoEm), med=comT.length?Math.round(comT.reduce((t,o)=>t+durMin(o.iniciadoEm,o.concluidoEm),0)/comT.length):0;
   let h='<div class="month"><button class="mbtn" data-act="hm" data-v="-1" aria-label="Mês anterior">‹</button><b>'+esc(label[0].toUpperCase()+label.slice(1))+'</b><button class="mbtn" data-act="hm" data-v="1" aria-label="Próximo mês"'+(cur?" disabled":"")+'>›</button></div>';
   h+='<div class="hstats"><div><b>'+os.length+'</b><span>Serviços feitos</span></div><div><b>'+(os.length?Math.round(ok/os.length*100)+"%":"–")+'</b><span>No prazo</span></div><div><b>'+(med?fmtMin(med):"–")+'</b><span>Tempo médio</span></div><div><b>'+rot.length+'</b><span>Rotinas feitas</span></div></div>';
-  h+='<div class="hbar"><div class="seg" role="group"><button data-act="hv" data-v="os" aria-pressed="'+(view==="os")+'">Serviços</button><button data-act="hv" data-v="rot" aria-pressed="'+(view==="rot")+'">Rotinas</button></div>'+(isChefe()&&(os.length||rot.length)?'<button class="btn sm" data-act="exportCsv">⬇ Baixar planilha</button>':'')+'</div>';
+  h+='<div class="hbar"><div class="seg" role="group"><button data-act="hv" data-v="os" aria-pressed="'+(view==="os")+'">Serviços</button><button data-act="hv" data-v="rot" aria-pressed="'+(view==="rot")+'">Rotinas</button><button data-act="hv" data-v="canc" aria-pressed="'+(view==="canc")+'">Cancelados</button></div>'+(isChefe()&&(os.length||rot.length)?'<button class="btn sm" data-act="exportCsv">⬇ Baixar planilha</button>':'')+'</div>';
   const byDay={}; const add=(d,html)=>{ (byDay[d]=byDay[d]||[]).push(html); };
   if(view==="os") os.forEach(o=>add(localDate(o.concluidoEm), histRow(o)));
+  else if(view==="canc") S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&isCancel(o)).forEach(o=>add(localDate(o.concluidoEm),'<button class="hrow" data-act="open" data-id="'+o.id+'"><span class="hdot late">⛔</span><div><b>'+esc(o.titulo)+'</b><div class="row-m">'+esc(localLabel(o.local))+' · '+fmtT(o.concluidoEm)+(o.origem==="recepcao"?' · 📣 '+esc(first(o.abertoPor)||"Recepção"):'')+'</div><div class="hsol">'+esc(o.solucao==="Não procede"?"Não procede (avaliação da gerência)":o.motivoCancel||"Cancelado")+'</div></div></button>'));
   else rot.forEach(x=>add(x.d,'<div class="hrow"><span class="hdot ok">✓</span><div><b>'+esc(x.r.titulo)+'</b><div class="row-m">'+esc(x.f.por||"Equipe")+' · às '+fmtT(x.f.em)+'</div></div></div>'));
   const days=Object.keys(byDay).sort().reverse();
   if(!days.length) return h+'<div class="empty" style="margin-top:12px">Nada registrado em '+esc(label)+'.</div>';
@@ -1731,7 +1777,7 @@ function meuDia(){
   const t=todayStr(), me=S.me;
   const tarefas=queue().filter(x=>x.o.responsavel===me).map(x=>x.o);
   const rot=rotDoDia(new Date().getDay()).filter(rotMinha);
-  const feitasOS=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&o.responsavel===me);
+  const feitasOS=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&o.responsavel===me&&!isCancel(o));
   const rotFeitas=rot.filter(r=>rotFeita(r,t)), rotPend=rot.filter(r=>!rotFeita(r,t));
   return {tarefas, rot, rotFeitas, rotPend, feitasOS};
 }
@@ -1803,7 +1849,8 @@ function vSimples(){
     h+='<div class="tt-sub">O que você faz todo dia</div>';
     h+= d.rot.length ? '<div class="sp-list">'+d.rotPend.map(srot).join("")+'</div>' : '<div class="sp-ok"><div>📋</div><b>Sem rotina hoje</b><p>Monte a sua rotina em “Mudar minha rotina”, lá embaixo.</p></div>';
     if(d.rot.length && !d.rotPend.length) h+='<div class="sp-ok"><div>✅</div><b>Rotina de hoje feita!</b></div>';
-    if(d.rotFeitas.length) h+='<div class="tt-sub">✓ Feitas hoje</div><div class="sd-list">'+d.rotFeitas.map(r=>'<div class="sd"><span>✓ '+esc(r.titulo)+'<small>às '+fmtT(rotFeita(r,todayStr()).em)+'</small></span><button class="sd-b" data-act="rotDone" data-id="'+r.id+'">↩ Desfazer</button></div>').join("")+'</div>';
+    if(d.rotFeitas.length) h+='<button class="sp-done-h" data-act="spDone">✓ <b>'+d.rotFeitas.length+'</b> '+(d.rotFeitas.length>1?"rotinas feitas":"rotina feita")+' hoje <span>'+(S.spDone?"▴ esconder":"▾ ver")+'</span></button>';
+    if(d.rotFeitas.length && S.spDone) h+='<div class="sd-list">'+d.rotFeitas.map(r=>'<div class="sd"><span>✓ '+esc(r.titulo)+'<small>às '+fmtT(rotFeita(r,todayStr()).em)+'</small></span><button class="sd-b" data-act="rotDone" data-id="'+r.id+'">↩ Desfazer</button></div>').join("")+'</div>';
     const sel=(S.sDay==null?td:S.sDay);
     h+='<div class="sp-week"><div class="sp-wh">📅 Minha semana</div><div class="week">'+WEEK.map(x=>{ const n=rotDoDia(x).filter(rotMinha).length; return '<button class="wd'+(x===td?" today":"")+'" data-act="spDay" data-v="'+x+'" aria-pressed="'+(x===sel)+'">'+DOWN[x]+'<small>'+(n||"–")+'</small></button>'; }).join("")+'</div>';
     const lr=rotDoDia(sel).filter(rotMinha);
@@ -1815,8 +1862,8 @@ function vSimples(){
   if(S.tTab==="dem"){
     h+='<div class="tt-sub">O que a gerência pediu para você</div>';
     h+= tasks.length ? '<div class="sp-list">'+tasks.map(scard).join("")+'</div>' : '<div class="sp-ok"><div>✅</div><b>Nenhuma demanda agora</b><p>Viu algo quebrado? Aperte <b>FOTO</b> lá embaixo.</p></div>';
-    const fe=d.feitasOS.filter(o=>!isPvOS(o));
-    if(fe.length) h+='<div class="tt-sub">✓ Terminadas hoje</div><div class="sd-list">'+fe.map(o=>'<div class="sd"><span>✓ '+esc(o.titulo)+'<small>'+esc(localLabel(o.local))+' · '+fmtT(o.concluidoEm)+'</small></span>'+(podeReabrir(o)?'<button class="sd-b" data-act="reabrir" data-id="'+o.id+'">↩ Reabrir</button>':'')+'</div>').join("")+'</div>';
+    const fe=d.feitasOS.filter(o=>!isPvOS(o)&&!isCancel(o));
+    h+=arqLinha(fe.length,0,(fe.length>1?"terminadas hoje":"terminada hoje"));
     const meus=triagem().filter(o=>o.relatadoPor===S.me);
     if(meus.length) h+='<p class="sp-fez">📷 '+meus.length+' foto'+(meus.length>1?'s':'')+' enviada'+(meus.length>1?'s':'')+' esperando a gerência</p>';
   }
@@ -1896,7 +1943,7 @@ function row(x){
     '<span class="row-s">'+(sm.k==="ok"&&o.concluidoEm?'Concluída '+fmtDT(o.concluidoEm):esc(sm.t))+'</span></button>';
 }
 
-function recorr(local){ const lim=Date.now()-90*864e5; return S.os.filter(o=>inUnit(o)&&o.local===local&&o.status==="concluida"&&o.concluidoEm&&new Date(o.concluidoEm).getTime()>=lim&&o.solucao!=="Não procede").length; }
+function recorr(local){ const lim=Date.now()-90*864e5; return S.os.filter(o=>inUnit(o)&&o.local===local&&o.status==="concluida"&&o.concluidoEm&&new Date(o.concluidoEm).getTime()>=lim&&!isCancel(o)).length; }
 function localState(local){
   const open=S.os.filter(o=>inUnit(o)&&isOpen(o)&&o.local===local);
   if(!open.length) return {k:"ok", n:0};
@@ -1979,7 +2026,7 @@ function vPrev(){
 
 /* ----- equipe e ajustes ----- */
 function desemp(p, ym){
-  const os=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&o.responsavel===p.nome&&o.solucao!=="Não procede");
+  const os=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&o.responsavel===p.nome&&!isCancel(o));
   const ok=os.filter(noPrazo).length, ct=os.filter(o=>o.iniciadoEm), med=ct.length?Math.round(ct.reduce((t,o)=>t+durMin(o.iniciadoEm,o.concluidoEm),0)/ct.length):0;
   const [y,m]=ym.split("-").map(Number), last=new Date(y,m,0).getDate(), hoje=todayStr(); let prog=0, feitas=0;
   rotinas().filter(r=>p.papel==="tecnico"?rotPara(r,p):r.responsavel===p.nome).forEach(r=>{ for(let d=1; d<=last; d++){ const ds=y+"-"+pad(m)+"-"+pad(d); if(ds>hoje) break; if(ds<(r.criadoEm||"").slice(0,10)) continue; if((r.dias||[]).includes(dowOf(ds))){ prog++; if(r.feitas&&r.feitas[ds]) feitas++; } } });
@@ -1991,7 +2038,7 @@ function bar(pct){ const v=pct==null?0:pct, c=v>=85?"var(--g)":v>=60?"var(--y)":
 function vDesemp(){
   const ym=S.hm||todayStr().slice(0,7), [y,m]=ym.split("-").map(Number), cur=ym===todayStr().slice(0,7);
   const label=new Date(y,m-1,1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"}), full=fullAccess(), myU=allowedUnits().map(u=>u.id);
-  const ppl=S.cfg.equipe.filter(p=>full||(p.unidades||[]).some(u=>myU.includes(u))||digits(p.cpf)===S.cpf);
+  const ppl=S.cfg.equipe.filter(p=>p.papel!=="recepcao"&&(full||(p.unidades||[]).some(u=>myU.includes(u))||digits(p.cpf)===S.cpf));
   let h='<div class="month"><button class="mbtn" data-act="hm" data-v="-1" aria-label="Mês anterior">‹</button><b>'+esc(label[0].toUpperCase()+label.slice(1))+'</b><button class="mbtn" data-act="hm" data-v="1" aria-label="Próximo mês"'+(cur?" disabled":"")+'>›</button></div>';
   const rows=ppl.map(p=>({p,d:desemp(p,ym)})).sort((a,b)=>b.d.n-a.d.n);
   h+='<div class="cards sec">'+rows.map(({p,d})=>'<div class="card perf"><div class="me-row"><span class="me-av sm">'+esc(p.nome.split(" ").slice(0,2).map(x=>x[0]).join("").toUpperCase())+'</span><div><b>'+esc(p.nome)+'</b><div class="muted" style="font-size:12.5px">'+esc(PAPEL[p.papel])+(d.late?' · <span style="color:var(--r);font-weight:700">🔴 '+d.late+' atrasada'+(d.late>1?'s':'')+' agora</span>':'')+'</div></div></div>'+
@@ -2099,13 +2146,16 @@ function closeSheet(){
 function refreshSheet(){
   const el=document.getElementById("sheetIn"); if(!el||!S.form) return;
   const ae=document.activeElement, aid=ae&&ae.id, sel=ae&&ae.selectionStart, sc=el.parentElement.scrollTop, F=S.form;
-  el.innerHTML = F.type==="os" ? sheetOS(F) : F.type==="local" ? sheetLocal(F) : F.type==="prev" ? sheetPrev(F) : F.type==="rot" ? sheetRot(F) : F.type==="aviso" ? sheetAviso(F) : F.type==="foto" ? sheetFoto(F) : F.type==="cham" ? sheetCham(F) : F.type==="pvitens" ? sheetPrevItens(F) : F.type==="rel" ? sheetRel(F) : F.type==="guia" ? sheetGuia(F) : F.type==="fim" ? sheetFim(F) : F.type==="resetpw" ? sheetResetPw(F) : F.type==="conta" ? sheetConta() : F.type==="senha" ? sheetSenha() : F.type==="tema" ? sheetTema() : F.type==="unit" ? sheetUnit(F) : F.type==="areas" ? sheetAreas() : "";
+  el.innerHTML = F.type==="os" ? sheetOS(F) : F.type==="local" ? sheetLocal(F) : F.type==="prev" ? sheetPrev(F) : F.type==="rot" ? sheetRot(F) : F.type==="aviso" ? sheetAviso(F) : F.type==="foto" ? sheetFoto(F) : F.type==="arq" ? sheetArq(F) : F.type==="cham" ? sheetCham(F) : F.type==="pvitens" ? sheetPrevItens(F) : F.type==="rel" ? sheetRel(F) : F.type==="guia" ? sheetGuia(F) : F.type==="fim" ? sheetFim(F) : F.type==="resetpw" ? sheetResetPw(F) : F.type==="conta" ? sheetConta() : F.type==="senha" ? sheetSenha() : F.type==="tema" ? sheetTema() : F.type==="unit" ? sheetUnit(F) : F.type==="areas" ? sheetAreas() : "";
   enhanceSelects(el);
   el.parentElement.scrollTop=sc;
   if(aid){ const n=document.getElementById(aid); if(n){ n.focus({preventScroll:true}); try{ if(sel!=null&&n.setSelectionRange) n.setSelectionRange(sel,sel); }catch(e){} } }
 }
 function localOptions(cur){ return '<option value="">Escolha</option><optgroup label="Suítes">'+suites().map(n=>'<option value="S:'+n+'"'+(cur==="S:"+n?" selected":"")+'>Suíte '+n+'</option>').join("")+'</optgroup><optgroup label="Áreas comuns">'+S.cfg.areas.map(a=>'<option value="A:'+esc(a)+'"'+(cur==="A:"+a?" selected":"")+'>'+esc(a)+'</option>').join("")+'</optgroup>'; }
-function respOptions(cur, emptyLabel){ return '<option value="">'+(emptyLabel||"Sem responsável")+'</option>'+names().map(p=>'<option value="'+esc(p)+'"'+(cur===p?" selected":"")+'>'+esc(p)+'</option>').join(""); }
+function respOptions(cur, emptyLabel){
+  const op=e=>'<option value="'+esc(e.nome)+'"'+(cur===e.nome?" selected":"")+'>'+esc(e.nome)+'</option>';
+  const tec=S.cfg.equipe.filter(e=>e.papel==="tecnico"), ger=S.cfg.equipe.filter(e=>e.papel==="gerente"||e.papel==="supervisor");
+  return '<option value="">'+(emptyLabel||"Sem responsável")+'</option>'+(tec.length?'<optgroup label="Técnicos">'+tec.map(op).join("")+'</optgroup>':'')+(ger.length?'<optgroup label="Gerência (só se for você mesmo fazer)">'+ger.map(op).join("")+'</optgroup>':''); }
 const TEMPOS=[[15,"15 min"],[30,"30 min"],[60,"1 h"],[120,"2 h"],[240,"4 h"],[480,"1 dia"]];
 const UICON={1:"🔴",3:"🟡",4:"🟢"};
 function fmtMin(m){ m=+m||0; if(!m) return ""; if(m<60) return m+" min"; if(m>=1440) { const d=Math.round(m/1440*10)/10; return String(d).replace(".",",")+(d===1?" dia":" dias"); } const h=Math.floor(m/60), r=m%60; return h+" h"+(r?" "+r+" min":""); }
@@ -2175,7 +2225,7 @@ function sheetOS(F){
 
   if(chefe && !(tri && !isNew)){
     h+='<div class="grid2"><div class="field"><label for="fLoc">Onde?</label><select id="fLoc" class="sel" data-of="local">'+localOptions(o.local)+'</select></div>'+
-      '<div class="field"><label for="fResp2">Quem resolve?</label><select id="fResp2" class="sel" data-of="responsavel">'+respOptions(o.responsavel)+'</select>'+(isNew&&F.autoResp&&o.responsavel===F.autoResp?'<span class="hint">Pelo setor: '+esc(cat(o.categoria).n)+'</span>':'')+'</div></div>';
+      '<div class="field"><label for="fResp2">Quem resolve?</label><select id="fResp2" class="sel" data-of="responsavel">'+respOptions(o.responsavel)+'</select>'+(o.responsavel&&o.responsavel===S.me?'<span class="hint" style="color:var(--y)">⚠️ Está com você. Para o técnico fazer, escolha ele aqui.</span>':isNew&&F.autoResp&&o.responsavel===F.autoResp?'<span class="hint">Vai para '+esc(first(o.responsavel))+' ('+esc(cat(o.categoria).n)+')</span>':'')+'</div></div>';
     h+='<div class="field"><span class="lbl">Urgência</span>'+urgSeg(o)+'</div>'+prazoBox(o,F,false)+tempoBox(o);
     if(o.local?.startsWith("S:")) h+='<label class="toggle"><input type="checkbox" data-of="bloqueiaSuite"'+(o.bloqueiaSuite?" checked":"")+'><span><b>Suíte fora de venda</b><small>Não pode receber convidado até resolver.</small></span></label>';
   } else if(chefe && tri && !isNew){
@@ -2227,7 +2277,7 @@ function sheetFoto(F){
 }
 function sheetLocal(F){
   const items=S.os.filter(o=>inUnit(o)&&o.local===F.local), open=items.filter(isOpen).map(o=>({o,sc:score(o)})).sort((a,b)=>b.sc.s-a.sc.s);
-  const doneAll=items.filter(o=>!isOpen(o)&&o.solucao!=="Não procede").sort((a,b)=>new Date(b.concluidoEm||0)-new Date(a.concluidoEm||0));
+  const doneAll=items.filter(o=>!isOpen(o)&&!isCancel(o)).sort((a,b)=>new Date(b.concluidoEm||0)-new Date(a.concluidoEm||0));
   const lim=Date.now()-90*864e5, rec={}; doneAll.filter(o=>new Date(o.concluidoEm||0).getTime()>=lim).forEach(o=>{ rec[o.categoria]=(rec[o.categoria]||0)+1; });
   const alerta=Object.entries(rec).filter(([,n])=>n>=3).sort((a,b)=>b[1]-a[1]);
   const w=ativAt(F.local), mine=myAtiv(), aqui=mine&&mine.local===F.local;
@@ -2271,7 +2321,7 @@ function sheetRot(F){
   return h+'</div>';
 }
 function sheetAviso(F){
-  const ppl = F.i<0 ? S.cfg.equipe : [S.cfg.equipe[F.i]].filter(Boolean);
+  const ppl = F.i<0 ? S.cfg.equipe.filter(e=>e.papel==="tecnico"||pendFor(e).length) : [S.cfg.equipe[F.i]].filter(Boolean);
   let h='<div class="sheet-h"><div><h2 id="shT">Aviso das 7h</h2><div class="sub" style="font-size:13.5px">É isso que cada pessoa recebe no WhatsApp.</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b">';
   h+=ppl.map(p=>{ const i=S.cfg.equipe.indexOf(p);
     return '<div class="field"><span class="lbl">'+esc(p.nome)+(p.whats?' · '+esc(p.whats):' · sem WhatsApp cadastrado')+'</span><div class="bubble">'+esc(msg7(p))+'</div>'+
@@ -2291,10 +2341,10 @@ function setStatus(o,st){
   return o;
 }
 function editOS(id){ const o0=S.os.find(x=>x.id===id); if(!o0) return; const o=Object.assign({fotos:[]},clone(o0)), F={type:"os", mode:"edit", o};
-  if(o.status==="triagem" && isChefe()){ if(o.iaSugestao && [1,3,4].includes(o.iaSugestao.prioridade)) o.prioridade=o.iaSugestao.prioridade; if(!o.responsavel){ const p=personFor(o.categoria); if(p){ o.responsavel=p.nome; F.autoResp=p.nome; } } }
+  if(o.status==="triagem" && isChefe()){ if(o.iaSugestao && [1,3,4].includes(o.iaSugestao.prioridade)) o.prioridade=o.iaSugestao.prioridade; if(!o.responsavel){ const p=tecFor(o.categoria); if(p){ o.responsavel=p.nome; F.autoResp=p.nome; } } }
   openSheet(F); }
 function commitEdit(){ if(!S.form||S.form.mode!=="edit") return; S.form.o.atualizadoEm=nowISO(); write("os", S.form.o); }
-function setCat(F, c){ const o=F.o; o.categoria=c; if(!(F.touched&&F.touched.responsavel) && (F.mode==="new"||o.status==="triagem")){ const p=personFor(c); if(p){ o.responsavel=p.nome; F.autoResp=p.nome; } } }
+function setCat(F, c){ const o=F.o; o.categoria=c; if(!(F.touched&&F.touched.responsavel) && (F.mode==="new"||o.status==="triagem")){ const p=tecFor(c); if(p){ o.responsavel=p.nome; F.autoResp=p.nome; } } }
 function setUrg(F, p){ const o=F.o; o.prioridade=p; if(o.status==="triagem" || F.prazoTouched) return; if(F.mode==="new"||o._prazoAuto!==false) o.prazo=addDays((F.mode==="new"?todayStr():o.criadoEm.slice(0,10)), DUE[p]); }
 function stAct(st){ return ()=>{ const o=S.form.o; setStatus(o,st); commitEdit(); if(st==="andamento" && o.local && S.me && !isChefe() && (!myAtiv()||myAtiv().local!==o.local)) startWork(o.local,true); haptic(); toast(osCode(o)+": "+STATUS[st], st==="concluida"); if(st==="concluida") setTimeout(closeSheet,450); }; }
 function rotSave(r){ r.dias=(r.dias||[]).map(Number); write("preventivas", r); }
@@ -2314,6 +2364,9 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  arq(){ openSheet({type:"arq", ym:todayStr().slice(0,7), v:"ok"}); },
+  arqV(el){ S.form.v=el.dataset.v; refreshSheet(); },
+  arqMes(el){ const F=S.form, [y,m]=(F.ym).split("-").map(Number), d=new Date(y,m-1+(+el.dataset.v),1), ym=d.getFullYear()+"-"+pad(d.getMonth()+1); if(ym>todayStr().slice(0,7)) return; F.ym=ym; refreshSheet(); },
   chamParada(){ const F=S.form; F.parada=!F.parada; if(F.parada) F.estado="agora"; haptic(); refreshSheet(); },
   chamSet(el){ const F=S.form, f=el.dataset.f; F[f]=el.dataset.v; if(f==="local"&&!F.local.startsWith("S:")) F.parada=false; haptic(); refreshSheet();
     if(f!=="estado"){ const nx=document.querySelector(f==="local"?".pb-grid":".es-list"); if(nx) setTimeout(()=>nx.scrollIntoView({behavior:"smooth",block:"center"}),60); } },
@@ -2330,7 +2383,7 @@ const A = {
     S.form=null; write("os",o); closeSheet(); haptic(); ding(1);
     toast("📣 Enviado"+(resp?" para "+first(resp):"")+"! Acompanhe aqui.", true); },
   async chamCancel(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; if(!await ask("Cancelar o chamado de "+localLabel(o.local)+"?","Cancelar chamado",true)) return;
-    const c=clone(o); c.status="concluida"; c.concluidoEm=nowISO(); c.solucao="Cancelado pela recepção"; hist(c,"Cancelado pela recepção"); write("os",c); toast("Chamado cancelado"); },
+    const c=clone(o); c.status="concluida"; c.concluidoEm=nowISO(); c.cancelado=true; c.motivoCancel="Cancelado pela recepção"; c.solucao="Cancelado pela recepção"; hist(c,"Cancelado pela recepção"); write("os",c); toast("Chamado cancelado"); },
   aprovarRec(el){ A.aprovar(el, "recepcao"); },
   spDone(){ S.spDone=!S.spDone; render(); },
   tTab(el){ S.tTab=el.dataset.v; haptic(); render(); window.scrollTo({top:0}); },
@@ -2455,7 +2508,7 @@ const A = {
     o.status="aberta"; if(!F.prazoTouched){ o.prazo=addDays(todayStr(), DUE[o.prioridade]); o._prazoAuto=true; } else o._prazoAuto=false;
     hist(o,"Avaliada: "+URG[urgOf(o.prioridade)]+(o.prazo?" · prazo "+fmtD(o.prazo):" · sem prazo")+(o.tempo?" · ⏱ "+fmtMin(o.tempo):"")+(o.responsavel?" · para "+o.responsavel:"")+(o.bloqueiaSuite?" · fora de venda":""));
     commitEdit(); haptic(); toast("Enviada para a fila"+(o.responsavel?" de "+first(o.responsavel):""), true); setTimeout(closeSheet,400); },
-  async archive(){ const F=S.form, o=F.o; if(!await ask("Marcar como não procede? O relato sai da lista.","Não procede")) return; o.status="concluida"; o.concluidoEm=nowISO(); o.solucao=o.solucao||"Não procede"; hist(o,"Avaliada: não procede"); commitEdit(); toast("Relato arquivado"); setTimeout(closeSheet,300); },
+  async archive(){ const F=S.form, o=F.o; if(!await ask("Marcar como não procede? O relato sai da lista.","Não procede")) return; o.status="concluida"; o.concluidoEm=nowISO(); o.cancelado=true; o.motivoCancel="Não procede (avaliação da gerência)"; o.solucao="Não procede"; hist(o,"Avaliada: não procede"); commitEdit(); toast("Relato arquivado"); setTimeout(closeSheet,300); },
   fstatus(el){ S.f.status=el.dataset.v; if(S.f.status==="concluidas") S.f.sem=""; render(); },
   fsem(el){ const v=el.dataset.v; S.f.sem = S.f.sem===v ? "" : v; S.f.status="abertas"; render(); },
   theme(el){ const v=el.dataset.v; if(v==="auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=v; try{ v==="auto"?localStorage.removeItem(LS_THEME):localStorage.setItem(LS_THEME,v); }catch(e){} haptic(); render(); },
