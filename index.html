@@ -1873,8 +1873,6 @@ function sheetFO(F){
   h+=campoLugar(F,"foSend");
   return h+'</div>';
 }
-function sheetPrev(F){ return formTarefa(F,"prev"); }
-function sheetRot(F){ return formTarefa(F,"rot"); }
 function sugTitulos(q, tipo){
   q=norm(String(q||"").trim()); if(q.length<2) return [];
   const base = tipo==="rot" ? ROT_TPL.map(t=>({t:t.titulo, tpl:t})).concat(rotinas().map(r=>({t:r.titulo})))
@@ -1912,6 +1910,31 @@ function formTarefa(F, tipo){
   const pode = F.mode==="edit" && (chefe || o.responsavel===S.me || o.criadoPor===S.me);
   h+='</div><div class="bar2">'+(pode?'<button class="b2 line" data-act="'+(rot?"delRot":"delPrev")+'">Excluir</button>':'')+'<button class="b2 go big" data-act="'+(rot?"saveRot":"savePrev")+'">Salvar</button></div>';
   return h;
+}
+function sheetPrev(F){
+  const p=F.o, chefe=isChefe();
+  let h='<div class="sheet-h"><div><h2 id="shT">'+(F.mode==="new"?"Nova preventiva":"Editar preventiva")+'</h2></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b">';
+  h+='<div class="field"><label for="pT">O que fazer</label><input id="pT" class="inp" data-op="titulo" value="'+esc(p.titulo)+'" placeholder="Ex.: limpeza dos filtros do ar"></div>';
+  h+='<div class="grid2"><div class="field"><label for="pL">Onde</label><select id="pL" class="sel" data-op="local">'+localOptions(p.local)+'</select></div><div class="field"><label for="pF">Com que frequência</label><select id="pF" class="sel" data-op="freq">'+[[7,"Toda semana"],[15,"A cada 15 dias"],[30,"Todo mês"],[60,"A cada 2 meses"],[90,"A cada 3 meses"],[180,"A cada 6 meses"],[365,"Todo ano"]].map(([d,l])=>'<option value="'+d+'"'+(+p.freq===d?" selected":"")+'>'+l+'</option>').join("")+'</select></div></div>';
+  h+='<div class="grid2"><div class="field"><label for="pC">Setor</label><select id="pC" class="sel" data-op="categoria">'+CATS.map(c=>'<option value="'+c.id+'"'+(p.categoria===c.id?" selected":"")+'>'+esc(c.n)+'</option>').join("")+'</select></div>'+
+    (chefe?'<div class="field"><label for="pR">Quem faz</label><select id="pR" class="sel" data-op="responsavel">'+respOptions(p.responsavel)+'</select></div>':'<div class="field"><span class="lbl">Quem faz</span><div class="kv"><div style="grid-column:1/-1"><b>'+esc(p.responsavel||S.me||"Você")+'</b></div></div></div>')+'</div>';
+  h+='<div class="field"><label for="pU">Última vez feita</label><input id="pU" type="date" class="inp" data-op="ultimaEm" value="'+esc(p.ultimaEm||"")+'"></div>';
+  const pode=F.mode==="edit"&&canEditPrev(p);
+  h+='<div class="foot-a">'+(pode?'<button class="btn ghost danger" data-act="delPrev">Excluir</button>':'<button class="btn ghost" data-act="close">Cancelar</button>')+'<button class="btn pri" data-act="savePrev">Salvar</button></div>';
+  return h+'</div>';
+}
+function sheetRot(F){
+  const r=F.o, chefe=isChefe();
+  let h='<div class="sheet-h"><div><h2 id="shT">'+(F.mode==="new"?"Nova rotina":"Editar rotina")+'</h2><div class="sub" style="font-size:13.5px">Tarefa que se repete nos dias da semana escolhidos.</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b">';
+  h+='<div class="field"><label for="rT">O que fazer</label><input id="rT" class="inp" data-op="titulo" value="'+esc(r.titulo)+'" placeholder="Ex.: ronda nas suítes, testar luzes e ar"></div>';
+  h+='<div class="field"><span class="lbl">Em quais dias</span><div class="days">'+WEEK.map(d=>'<button class="pk" data-act="rotDia" data-v="'+d+'" aria-pressed="'+(r.dias||[]).includes(d)+'">'+DOWN[d]+'</button>').join("")+'</div>'+
+    '<div class="card-a" style="margin-top:4px"><button class="btn sm ghost" data-act="rotDias" data-v="all">Todo dia</button><button class="btn sm ghost" data-act="rotDias" data-v="uteis">Seg a sex</button><button class="btn sm ghost" data-act="rotDias" data-v="none">Limpar</button></div></div>';
+  h+='<div class="grid2"><div class="field"><label for="rH">Horário (opcional)</label><input id="rH" type="time" class="inp" data-op="hora" value="'+esc(r.hora||"")+'"></div><div class="field"><label for="rL">Onde</label><select id="rL" class="sel" data-op="local">'+localOptions(r.local)+'</select></div></div>';
+  h+='<div class="grid2"><div class="field"><label for="rC">Setor</label><select id="rC" class="sel" data-op="categoria">'+CATS.map(c=>'<option value="'+c.id+'"'+(r.categoria===c.id?" selected":"")+'>'+esc(c.n)+'</option>').join("")+'</select></div>'+
+    (chefe?'<div class="field"><label for="rR">Quem faz</label><select id="rR" class="sel" data-op="responsavel">'+respOptions(r.responsavel,"Quem cuida do setor")+'</select></div>':'<div class="field"><span class="lbl">Quem faz</span><div class="kv"><div style="grid-column:1/-1"><b>'+esc(r.responsavel||S.me||"Você")+'</b></div></div></div>')+'</div>';
+  const pode=F.mode==="edit"&&canEditRot(r);
+  h+='<div class="foot-a">'+(pode?'<button class="btn ghost danger" data-act="delRot">Excluir</button>':'<button class="btn ghost" data-act="close">Cancelar</button>')+'<button class="btn pri" data-act="saveRot">Salvar rotina</button></div>';
+  return h+'</div>';
 }
 /* ===================== OS ===================== */
 function nextNum(){ return S.os.filter(inUnit).reduce((m,o)=>Math.max(m,o.numero||0),0)+1; }
