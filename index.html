@@ -885,6 +885,18 @@ div.sc-b{cursor:default}
 .pk3{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 14px;border-radius:12px;background:var(--brass-soft);color:var(--brass-ink);font-weight:700}
 .pk3 span{display:flex;align-items:center;gap:8px}
 .pk3 button{border:0;background:var(--surface);color:var(--ink-2);font:600 13px var(--font);border-radius:9px;padding:8px 12px;cursor:pointer}
+.ps{margin-top:20px}
+.ps-h{display:flex;align-items:center;gap:8px;margin:0 2px 10px}
+.ps-i{width:28px;height:28px;border-radius:8px;background:var(--surface-2);color:var(--ink-2);display:grid;place-items:center}
+.ps-h b{flex:1;font-size:15px;font-weight:800}
+.ps-n{min-width:24px;height:24px;border-radius:12px;background:var(--surface-2);color:var(--ink-2);font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 7px}
+.ps-n.hot{background:var(--r);color:#fff}
+.ps .pp-list{margin-top:0}
+.ps-v{font-size:13.5px;color:var(--ink-3);padding:12px 14px;border:1px dashed var(--line);border-radius:14px}
+.gcs{display:flex;flex-wrap:wrap;gap:6px}
+.gc{min-width:44px;height:38px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font:800 15px var(--font);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.gc.nx{border-color:var(--g);box-shadow:0 0 0 2px color-mix(in srgb,var(--g) 30%,transparent)}
+.gc.ok{background:var(--g-soft);border-color:transparent;color:var(--g);cursor:default}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1853,15 +1865,6 @@ function cardPP(it){
       B("pvNext",p.id,li("check",20,"#fff",2.6)+" PRONTO NA "+esc(lab),"wine")+'<button class="pp-l" data-act="pvOpen" data-id="'+p.id+'">Fez outra? Escolher na lista</button></div>'; }
   return '<div class="pp t-p"><div class="pp-h"><span class="pp-i">'+catIcon(p.categoria,22)+'</span><span class="pp-t"><b>'+esc(p.titulo)+'</b><span>Preventiva · '+esc(localLabel(p.local))+'</span></span></div>'+B("prevDone",p.id,li("check",20,"#fff",2.6)+" PRONTO","ok")+'</div>';
 }
-function vPaPum(){
-  const d=meuDia(), its=itensPaPum(), fz=d.feitasOS.length+d.rotFeitas.length, tot=its.length+fz;
-  let h='<div class="pp-top"><h1>'+esc(greeting())+'</h1><b>'+fz+'<i>/'+tot+' feitas</i></b></div><div class="pb2"><i style="width:'+(tot?Math.round(fz/tot*100):0)+'%"></i></div>'+installBanner();
-  h+= its.length ? '<div class="pp-list">'+its.map(cardPP).join("")+'</div>' : '<div class="sp-ok" style="margin-top:16px"><div>✅</div><b>Tudo feito!</b><p>Viu algo quebrado? Aperte <b>Foto</b>.</p></div>';
-  const fe=d.feitasOS.filter(o=>!isCancel(o)).length+d.rotFeitas.length;
-  h+=arqLinha(fe,0,fe>1?"feitas hoje":"feita hoje");
-  h+='<div style="text-align:center;margin-top:10px"><button class="btn sm ghost" data-act="tab" data-tab="prev">Minhas rotinas e preventivas</button></div>';
-  return h;
-}
 function sheetFO(F){
   const p=(F.pend||[])[0];
   let h='<div class="sheet-h"><div><h2 id="shT">Onde é?</h2></div><button class="close" data-act="close" aria-label="Cancelar">×</button></div><div class="sheet-b fo">';
@@ -1935,6 +1938,48 @@ function sheetRot(F){
   const pode=F.mode==="edit"&&canEditRot(r);
   h+='<div class="foot-a">'+(pode?'<button class="btn ghost danger" data-act="delRot">Excluir</button>':'<button class="btn ghost" data-act="close">Cancelar</button>')+'<button class="btn pri" data-act="saveRot">Salvar rotina</button></div>';
   return h+'</div>';
+}
+/* ===================== AGRUPAR TAREFAS IGUAIS ===================== */
+function semSuite(t){ return String(t||"").replace(/\s*(na|da|em|-|·)?\s*su[ií]te\s*\d+/gi,"").replace(/\s{2,}/g," ").trim(); }
+function grupoKey(o){ if(o.grupoId) return "g:"+o.grupoId; return "t:"+o.categoria+":"+norm(semSuite(o.titulo))+":"+urgOf(o.prioridade); }
+function suiteNum(l){ return l&&l.startsWith("S:")?parseInt(l.slice(2),10):9999; }
+function agrupar(tasks){
+  const by={}, solo=[];
+  tasks.forEach(o=>{ if(o.status==="aguardando"||!(o.local||"").startsWith("S:")){ solo.push(o); return; } const k=grupoKey(o); (by[k]=by[k]||[]).push(o); });
+  const out=[];
+  Object.keys(by).forEach(k=>{ const g=by[k]; if(g.length<2) solo.push(g[0]); else out.push({k:"grp", key:k, itens:g.sort((a,b)=>suiteNum(a.local)-suiteNum(b.local))}); });
+  return {grupos:out, solo};
+}
+function cardGrupo(G){
+  const t=todayStr(), o0=G.itens[0];
+  const feitas=S.os.filter(o=>o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&o.responsavel===S.me&&!isCancel(o)&&grupoKey(o)===G.key&&(o.local||"").startsWith("S:"));
+  const total=G.itens.length+feitas.length, nx=G.itens.find(o=>o.status==="andamento")||G.itens[0];
+  const urg=G.itens.some(o=>urgOf(o.prioridade)===1), late=G.itens.some(o=>sem(o).k==="r");
+  const chips=feitas.map(o=>'<span class="gc ok">'+li("check",12,"currentColor",3)+o.local.slice(2)+'</span>').join("")+G.itens.map(o=>'<button class="gc'+(o===nx?" nx":"")+'" data-act="grpDone" data-id="'+o.id+'" aria-label="Marcar suíte '+o.local.slice(2)+' como pronta">'+o.local.slice(2)+'</button>').join("");
+  return '<div class="pp t-'+cor(o0)+'"><div class="pp-h"><span class="pp-i">'+catIcon(o0.categoria,22)+'</span><span class="pp-t"><b>'+esc(semSuite(o0.titulo)||o0.titulo)+'</b><span>'+G.itens.length+' suítes · '+feitas.length+' de '+total+' feitas</span></span>'+(urg?'<span class="tg tg-rs">URGENTE</span>':late?'<span class="tg tg-r">ATRASADA</span>':'')+'</div>'+
+    '<div class="gcs">'+chips+'</div>'+
+    '<button class="pp-b ok" data-act="grpDone" data-id="'+nx.id+'">'+li("check",20,"#fff",2.6)+' PRONTO NA SUÍTE '+esc(nx.local.slice(2))+'</button>'+
+    '<div class="pp-l" style="text-align:center">Fez outra antes? Toque no número dela acima.</div></div>';
+}
+function vPaPum(){
+  const d=meuDia(), t=todayStr(), hh=hhmm(), ord={r:0,y:1,g:2};
+  const isPvOS=o=>{ const p=o.prevId?S.prev.find(x=>x.id===o.prevId):null; return p&&prevMulti(p); };
+  const tasks=d.tarefas.filter(o=>!isPvOS(o)).sort((a,b)=>((b.status==="andamento")-(a.status==="andamento"))||((a.status==="aguardando")-(b.status==="aguardando"))||(ord[cor(a)]-ord[cor(b)]));
+  const {grupos, solo}=agrupar(tasks);
+  const demCards=[...grupos.map(G=>({sc:Math.min(...G.itens.map(o=>ord[cor(o)])),h:cardGrupo(G)})), ...solo.map(o=>({sc:(o.status==="andamento"?-1:o.status==="aguardando"?9:ord[cor(o)]),h:cardPP({k:"os",o})}))].sort((a,b)=>a.sc-b.sc);
+  const rot=d.rotPend.slice().sort((a,b)=>(a.hora||"99").localeCompare(b.hora||"99"));
+  const todasPv=preventivas();
+  const pvs=todasPv.filter(p=>{ if(prevMulti(p)){ const pr=prevProg(p); return pr.n<pr.t && (pr.n>0||prevDue(p)<=t); } return prevDue(p)<=t; });
+  const fz=d.feitasOS.length+d.rotFeitas.length, tot=demCards.length+rot.length+pvs.length+fz;
+  let h='<div class="pp-top"><h1>'+esc(greeting())+'</h1><b>'+fz+'<i>/'+tot+' feitas</i></b></div><div class="pb2"><i style="width:'+(tot?Math.round(fz/tot*100):0)+'%"></i></div>'+installBanner();
+  const sec=(ic,tit,n,body,vazio,hot)=>'<section class="ps"><div class="ps-h"><span class="ps-i">'+li(ic,17)+'</span><b>'+tit+'</b><span class="ps-n'+(hot?" hot":"")+'">'+(n||"✓")+'</span></div>'+(n?'<div class="pp-list">'+body+'</div>':'<div class="ps-v">'+vazio+'</div>')+'</section>';
+  h+=sec("list","Rotina de hoje",rot.length,rot.map(r=>cardPP({k:"rot",r})).join(""),d.rotFeitas.length?"Rotina de hoje feita ✓":"Sem rotina para hoje");
+  h+=sec("wrench","Demandas",demCards.length,demCards.map(x=>x.h).join(""),"Nenhuma demanda agora",tasks.some(o=>cor(o)==="r"));
+  if(todasPv.length) h+=sec("clock","Preventivas",pvs.length,pvs.map(p=>cardPP({k:"pv",p})).join(""),"Nenhuma preventiva para agora");
+  const fe=d.feitasOS.filter(o=>!isCancel(o)).length+d.rotFeitas.length;
+  h+=arqLinha(fe,0,fe>1?"feitas hoje":"feita hoje");
+  h+='<div style="text-align:center;margin-top:10px"><button class="btn sm ghost" data-act="tab" data-tab="prev">Minhas rotinas e preventivas</button></div>';
+  return h;
 }
 /* ===================== OS ===================== */
 function nextNum(){ return S.os.filter(inUnit).reduce((m,o)=>Math.max(m,o.numero||0),0)+1; }
@@ -2584,6 +2629,8 @@ function sheetOS(F){
   if(chefe && !(tri && !isNew)){
     h+='<div class="grid2"><div class="field"><label for="fLoc">Onde?</label><select id="fLoc" class="sel" data-of="local">'+localOptions(o.local)+'</select></div>'+
       '<div class="field"><label for="fResp2">Quem resolve?</label><select id="fResp2" class="sel" data-of="responsavel">'+respOptions(o.responsavel)+'</select>'+(o.responsavel&&o.responsavel===S.me?'<span class="hint" style="color:var(--y)">⚠️ Está com você. Para o técnico fazer, escolha ele aqui.</span>':isNew&&F.autoResp&&o.responsavel===F.autoResp?'<span class="hint">Vai para '+esc(first(o.responsavel))+' ('+esc(cat(o.categoria).n)+')</span>':'')+'</div></div>';
+    if(isNew){ h+='<button class="btn sm ghost" data-act="multiTog" style="justify-self:start">'+(F.multiOn?"✓ Várias suítes":"+ Várias suítes de uma vez")+'</button>';
+      if(F.multiOn) h+='<div class="field"><span class="lbl">Marque as suítes'+((F.multi||[]).length?' · '+F.multi.length+' escolhida'+(F.multi.length>1?'s':''):'')+'</span><div class="ns2">'+suites().map(n=>'<button class="'+((F.multi||[]).includes("S:"+n)?"on":"")+'" data-act="multiS" data-v="S:'+n+'">'+n+'</button>').join("")+'</div><span class="hint">Vira uma tarefa por suíte, e o técnico vê tudo junto num cartão só.</span></div>'; }
     h+='<div class="field"><span class="lbl">Urgência</span>'+urgSeg(o)+'</div>'+prazoBox(o,F,false)+tempoBox(o);
     if(o.local?.startsWith("S:")) h+='<label class="toggle"><input type="checkbox" data-of="bloqueiaSuite"'+(o.bloqueiaSuite?" checked":"")+'><span><b>Suíte fora de venda</b><small>Não pode receber convidado até resolver.</small></span></label>';
   } else if(chefe && tri && !isNew){
@@ -2702,6 +2749,9 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  grpDone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=clone(o); if(!c.iniciadoEm) c.iniciadoEm=nowISO(); if(!c.responsavel) c.responsavel=S.me; setStatus(c,"concluida"); write("os",c); haptic(); toastUndo("Suíte "+(o.local||"").slice(2)+" pronta!", ()=>write("os",antes)); },
+  multiTog(){ const F=S.form; F.multiOn=!F.multiOn; if(F.multiOn){ F.multi=F.o.local&&F.o.local.startsWith("S:")?[F.o.local]:[]; } refreshSheet(); },
+  multiS(el){ const F=S.form, v=el.dataset.v; F.multi=F.multi||[]; F.multi=F.multi.includes(v)?F.multi.filter(x=>x!==v):F.multi.concat([v]); F.multi.sort((a,b)=>suiteNum(a)-suiteNum(b)); F.o.local=F.multi[0]||""; haptic(); refreshSheet(); },
   pickTit(el){ const F=S.form, x=sugTitulos(F.tq, F.type==="rot"?"rot":"prev")[+el.dataset.i]; if(!x) return; const o=F.o; o.titulo=x.t; F.tq="";
     if(x.tpl){ if(x.tpl.categoria) o.categoria=x.tpl.categoria; if(x.tpl.local&&!o.local) o.local=(S.cfg.areas.includes(x.tpl.local.slice(2))?x.tpl.local:""); if(F.type==="rot"){ if(x.tpl.dias&&!(o.dias||[]).length) o.dias=x.tpl.dias.slice(); if(x.tpl.hora&&!o.hora) o.hora=x.tpl.hora; } else if(x.tpl.freq) o.freq=x.tpl.freq; }
     haptic(); refreshSheet(); },
@@ -2890,6 +2940,10 @@ const A = {
     if(!o.local.startsWith("S:")) o.bloqueiaSuite=false;
     if(chefe){ o.status="aberta"; hist(o,"OS aberta"+(o.responsavel?" para "+o.responsavel:"")+(o.bloqueiaSuite?" · suíte fora de venda":"")); }
     else { o.status="triagem"; o.relatadoPor=S.me||""; o.responsavel=""; o.prazo=""; o.bloqueiaSuite=false; hist(o,"Relatado"+(o.fotos.length?" com "+o.fotos.length+" foto"+(o.fotos.length>1?"s":""):"")); }
+    const lista = chefe && F.multiOn && (F.multi||[]).length>1 ? F.multi.slice() : null;
+    if(lista){ const gid=uid("g"), base=clone(o); base.titulo=semSuite(base.titulo)||base.titulo;
+      lista.forEach((l,i)=>{ const c=clone(base); c.id=uid("os"); c.local=l; c.grupoId=gid; c.numero=i===0?o.numero:nextNum(); c.historico=[]; hist(c,"OS aberta em grupo ("+lista.length+" suítes)"+(c.responsavel?" para "+c.responsavel:"")); write("os",c); });
+      S.form=null; closeSheet(); haptic(); toast(lista.length+" suítes abertas"+(o.responsavel?" para "+first(o.responsavel):""), true); return; }
     S.form=null; write("os",o); closeSheet(); haptic();
     toast(chefe ? osCode(o)+" aberta"+(o.responsavel?" para "+first(o.responsavel):"") : "Enviado para a gerência avaliar", true);
   },
