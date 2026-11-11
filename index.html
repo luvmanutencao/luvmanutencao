@@ -1615,13 +1615,13 @@ async function startWork(local, silent){
   if(cur) await endWork(true);
   const a={id:S.cpf, nome:S.me, cpf:S.cpf, unidade:curUnit().id, local, desde:nowISO()};
   write("atividade", a);
-  S.os.filter(o=>inUnit(o)&&o.local===local&&o.status==="aberta"&&(o.responsavel===S.me||!o.responsavel)).forEach(o0=>{ const o=clone(o0); if(!o.responsavel) o.responsavel=S.me; setStatus(o,"andamento"); write("os",o); });
+  S.os.filter(o=>inUnit(o)&&o.local===local&&o.status==="aberta"&&(ehDe(o,S.me)||!o.responsavel)).forEach(o0=>{ const o=clone(o0); if(!o.responsavel) o.responsavel=S.me; setStatus(o,"andamento"); write("os",o); });
   haptic(); if(!silent) toast("🔧 Trabalhando na "+localLabel(local), true);
 }
 async function endWork(silent){
   const a=myAtiv(); if(!a) return;
   const min=minsDesde(a.desde), txt="Trabalhou na "+localLabel(a.local)+" das "+fmtT(a.desde)+" às "+fmtT(nowISO())+" ("+fmtMin(Math.max(1,min))+")";
-  S.os.filter(o=>inUnit(o)&&o.local===a.local&&o.status==="andamento"&&o.responsavel===S.me).forEach(o0=>{ const o=clone(o0); hist(o,txt); write("os",o); });
+  S.os.filter(o=>inUnit(o)&&o.local===a.local&&o.status==="andamento"&&ehDe(o,S.me)).forEach(o0=>{ const o=clone(o0); hist(o,txt); write("os",o); });
   remove("atividade", a.id);
   if(!silent){ haptic(); toast("Saiu da "+localLabel(a.local)+" · "+fmtMin(Math.max(1,min)), true); }
 }
@@ -1636,7 +1636,7 @@ function workNow(){
 }
 function sheetFim(F){
   const a=myAtiv(); if(!a) return '<div class="sheet-b"><div class="empty">Você não está trabalhando em nenhum lugar agora.</div></div>';
-  const os=S.os.filter(o=>inUnit(o)&&o.local===a.local&&isOpen(o)&&o.status!=="triagem"&&(o.responsavel===S.me||!o.responsavel));
+  const os=S.os.filter(o=>inUnit(o)&&o.local===a.local&&isOpen(o)&&o.status!=="triagem"&&(ehDe(o,S.me)||!o.responsavel));
   F.sel=F.sel||Object.fromEntries(os.map(o=>[o.id,o.status==="andamento"]));
   let h='<div class="sheet-h"><div><h2 id="shT">Terminar na '+esc(localLabel(a.local))+'</h2><div class="sub" style="font-size:13.5px">Você ficou '+fmtMin(Math.max(1,minsDesde(a.desde)))+' (desde '+fmtT(a.desde)+')</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b">';
   if(os.length){ h+='<span class="lbl">O que ficou pronto?</span><ul class="check">'+os.map(o=>'<li class="'+(F.sel[o.id]?"okd":"")+'"><label><input type="checkbox" data-act="fimSel" data-id="'+o.id+'"'+(F.sel[o.id]?" checked":"")+'><span>'+esc(o.titulo)+'</span></label></li>').join("")+'</ul>'+
@@ -1650,7 +1650,7 @@ function sheetFim(F){
 function prevItens(p){ if(!p) return []; if(p.local==="A:Todas as suítes") return suites().map(n=>"S:"+n); return p.local?[p.local]:[]; }
 function prevMulti(p){ return prevItens(p).length>1; }
 function prevProg(p){ const it=prevItens(p), f=(p.ciclo&&p.ciclo.feitos)||{}; return {n:it.filter(l=>f[l]).length, t:it.length}; }
-function podeReabrir(o){ return o && o.status==="concluida" && !isCancel(o) && (isChefe() || (S.me && o.responsavel===S.me && o.concluidoEm && localDate(o.concluidoEm)===todayStr() && o.solucao!=="Não procede")); }
+function podeReabrir(o){ return o && o.status==="concluida" && !isCancel(o) && (isChefe() || (S.me && ehDe(o,S.me) && o.concluidoEm && localDate(o.concluidoEm)===todayStr() && o.solucao!=="Não procede")); }
 function sheetPrevItens(F){
   const p=S.prev.find(x=>x.id===F.id); if(!p) return "";
   const it=prevItens(p), f=(p.ciclo&&p.ciclo.feitos)||{}, pr=prevProg(p), sel=F.sel||{};
@@ -1693,7 +1693,7 @@ function avisoAoVivo(antes, depois, novo){
     if(depois.status==="andamento"){ toast("🔧 "+(first(depois.responsavel)||"Manutenção")+" começou: "+localLabel(depois.local)); ding(1); }
     if(depois.status==="concluida" && depois.solucao!=="Cancelado pela recepção"){ toast("✅ "+localLabel(depois.local)+" resolvida!"+(depois.bloqueiaSuite?" Pode vender.":""), true); ding(2); }
   }
-  if(S.role==="tecnico" && novo && depois.responsavel===S.me && depois.status==="aberta"){ toast("📣 Novo chamado: "+localLabel(depois.local)); ding(2); }
+  if(S.role==="tecnico" && novo && ehDe(depois,S.me) && depois.status==="aberta"){ toast("📣 Novo chamado: "+localLabel(depois.local)); ding(2); }
 }
 function track(o){
   const st=o.status==="concluida"?2:(o.status==="andamento"||o.status==="aguardando")?1:0, pb=probOf(o), w=ativAt(o.local)[0], cancel=o.solucao==="Cancelado pela recepção";
@@ -1747,7 +1747,7 @@ function sheetCham(F){
 function isCancel(o){ return !!(o && (o.cancelado || o.solucao==="Cancelado pela recepção" || o.solucao==="Não procede")); }
 function arqBase(){
   return S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm).filter(o=>
-    S.role==="tecnico" ? o.responsavel===S.me :
+    S.role==="tecnico" ? ehDe(o,S.me) :
     S.role==="recepcao" ? o.origem==="recepcao" : true);
 }
 function arqLinha(n, nc, hojeTxt){
@@ -1816,7 +1816,7 @@ function tagOf(o){
 function tag2(o){ const t=tagOf(o); return '<span class="tg tg-'+t[1]+'">'+t[0]+'</span>'; }
 function row(x){
   const o=x.o, k=cor(o);
-  const sub=[localLabel(o.local), S.role==="tecnico"?"":(o.responsavel?first(o.responsavel):"Sem responsável"), o.origem==="recepcao"?"Recepção":"", o.tempo&&isOpen(o)?fmtMin(o.tempo):"", o.fotos?.length?o.fotos.length+" foto"+(o.fotos.length>1?"s":""):""].filter(Boolean).join(" · ");
+  const sub=[localLabel(o.local), S.role==="tecnico"?((o.ajudantes||[]).length?"com "+[o.responsavel].concat(o.ajudantes).filter(n=>n&&n!==S.me).map(first).join(", "):""):(quemTxt(o)||"Sem responsável"), o.origem==="recepcao"?"Recepção":"", o.tempo&&isOpen(o)?fmtMin(o.tempo):"", o.fotos?.length?o.fotos.length+" foto"+(o.fotos.length>1?"s":""):""].filter(Boolean).join(" · ");
   return '<button class="r2 t-'+k+'" data-act="open" data-id="'+o.id+'"><span class="r2-i">'+catIcon(o.categoria,19)+'</span><span class="r2-t"><b>'+esc(o.titulo||"Sem título")+'</b><span>'+esc(sub)+'</span></span>'+tag2(o)+'<span class="r2-c">'+li("chev",16)+'</span></button>';
 }
 function featured(o){
@@ -1835,7 +1835,7 @@ function sheetTec(F){
   const quem=o.origem==="recepcao"?(first(o.abertoPor)||"Recepção"):o.relatadoPor?first(o.relatadoPor):"Gerência";
   let h='<div class="sheet-h"><div><div class="osnum">'+esc(osCode(o))+'</div><h2 id="shT" style="margin-top:2px">'+esc(o.titulo||"Sem título")+'</h2></div><div style="display:flex;gap:8px;align-items:center">'+(urgOf(o.prioridade)===1&&isOpen(o)?'<span class="tg tg-r">URGENTE</span>':tag2(o))+'<button class="close" data-act="close" aria-label="Fechar">×</button></div></div><div class="sheet-b tec">';
   if(ph) h+='<button class="tec-ph" data-act="foto" data-p="'+esc(ph.path)+'">'+(src?'<img src="'+esc(src)+'" alt="Foto do problema">':'<span class="ft-l"></span>')+(o.fotos.length>1?'<em>+'+(o.fotos.length-1)+'</em>':'')+'</button>';
-  h+='<div class="kv2">'+[["Onde",localLabel(o.local)],["Pedido por",quem],["Prazo",o.prazo?(diffDays(o.prazo)===0?"Hoje":fmtD(o.prazo)):"Sem prazo"],["Tempo previsto",o.tempo?fmtMin(o.tempo):"—"]].map(([k,v])=>'<div><span>'+k+'</span><b>'+esc(v)+'</b></div>').join("")+'</div>';
+  h+='<div class="kv2">'+[["Onde",localLabel(o.local)],[(o.ajudantes||[]).length?"Equipe":"Pedido por",(o.ajudantes||[]).length?quemTxt(o):quem],["Prazo",o.prazo?(diffDays(o.prazo)===0?"Hoje":fmtD(o.prazo)):"Sem prazo"],["Tempo previsto",o.tempo?fmtMin(o.tempo):"—"]].map(([k,v])=>'<div><span>'+k+'</span><b>'+esc(v)+'</b></div>').join("")+'</div>';
   if(o.descricao && o.descricao!==o.titulo) h+='<div class="tec-d">'+esc(o.descricao)+'</div>';
   if(o.checklist.length) h+='<div class="lbl2"><span>ETAPAS</span><span>'+o.checklist.filter(c=>c.ok).length+' de '+o.checklist.length+'</span></div><div class="et2">'+o.checklist.map((c,i)=>'<label class="'+(c.ok?"ok":"")+'"><input type="checkbox" data-act="ck" data-i="'+i+'"'+(c.ok?" checked":"")+'><span>'+esc(c.t)+'</span></label>').join("")+'</div>';
   if(o.status==="andamento") h+='<div class="field"><label for="fSol">O que você fez? <span class="muted">(se quiser)</span></label><textarea id="fSol" class="inp" data-of="solucao" style="min-height:54px">'+esc(o.solucao)+'</textarea></div>';
@@ -1880,7 +1880,7 @@ function cardPP(it){
   const B=(act,id,txt,cls)=>'<button class="pp-b '+cls+'" data-act="'+act+'" data-id="'+id+'">'+txt+'</button>';
   if(it.k==="os"){ const o=it.o, k=cor(o), and=o.status==="andamento", agu=o.status==="aguardando";
     const tg=urgOf(o.prioridade)===1?'<span class="tg tg-rs">URGENTE</span>':sem(o).k==="r"?'<span class="tg tg-r">ATRASADA</span>':'';
-    return '<div class="pp t-'+k+'"><div class="pp-h" data-act="open" data-id="'+o.id+'" role="button" tabindex="0"><span class="pp-i">'+catIcon(o.categoria,22)+'</span><span class="pp-t"><b>'+esc(o.titulo)+'</b><span>'+esc(localLabel(o.local))+(o.origem==="recepcao"?" · pedido da recepção":"")+'</span></span>'+tg+'</div>'+
+    return '<div class="pp t-'+k+'"><div class="pp-h" data-act="open" data-id="'+o.id+'" role="button" tabindex="0"><span class="pp-i">'+catIcon(o.categoria,22)+'</span><span class="pp-t"><b>'+esc(o.titulo)+'</b><span>'+esc(localLabel(o.local))+(o.origem==="recepcao"?" · pedido da recepção":"")+((o.ajudantes||[]).length?" · com "+esc([o.responsavel].concat(o.ajudantes).filter(n=>n&&n!==S.me).map(first).join(", ")):"")+'</span></span>'+tg+'</div>'+
       (agu?B("open",o.id,li("clock",19)+" ESPERANDO PEÇA","n"):and?B("tdone",o.id,li("check",20,"#fff",2.6)+" PRONTO","ok"):B("tstart",o.id,"▶ FAZER","go"))+'</div>'; }
   if(it.k==="rot"){ const r=it.r;
     return '<div class="pp t-y"><div class="pp-h"><span class="pp-i">'+li("list",22)+'</span><span class="pp-t"><b>'+esc(r.titulo)+'</b><span>Rotina'+(r.hora?" · "+esc(r.hora):"")+(r.local?" · "+esc(localLabel(r.local)):"")+'</span></span></div>'+B("rotDone",r.id,li("check",20,"#fff",2.6)+" PRONTO","ok")+'</div>'; }
@@ -1977,7 +1977,7 @@ function agrupar(tasks){
 }
 function cardGrupo(G){
   const t=todayStr(), o0=G.itens[0];
-  const feitas=S.os.filter(o=>o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&o.responsavel===S.me&&!isCancel(o)&&grupoKey(o)===G.key&&(o.local||"").startsWith("S:"));
+  const feitas=S.os.filter(o=>o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&ehDe(o,S.me)&&!isCancel(o)&&grupoKey(o)===G.key&&(o.local||"").startsWith("S:"));
   const total=G.itens.length+feitas.length, nx=G.itens.find(o=>o.status==="andamento")||G.itens[0];
   const urg=G.itens.some(o=>urgOf(o.prioridade)===1), late=G.itens.some(o=>sem(o).k==="r");
   const chips=feitas.map(o=>'<span class="gc ok">'+li("check",12,"currentColor",3)+o.local.slice(2)+'</span>').join("")+G.itens.map(o=>'<button class="gc'+(o===nx?" nx":"")+'" data-act="grpDone" data-id="'+o.id+'" aria-label="Marcar suíte '+o.local.slice(2)+' como pronta">'+o.local.slice(2)+'</button>').join("");
@@ -2049,7 +2049,7 @@ function ficha(o){
 }
 
 /* ===================== aviso das 7h ===================== */
-function pendFor(p){ return queue().filter(({o})=>o.responsavel===p.nome || (!o.responsavel && p.cats.includes(o.categoria))); }
+function pendFor(p){ return queue().filter(({o})=>ehDe(o,p.nome) || (!o.responsavel && p.cats.includes(o.categoria))); }
 function msg7(p){
   const nm=first(p.nome)||"equipe", unit=curUnit().nome, list=pendFor(p);
   const hoje=rotDoDia(new Date().getDay()).filter(r=>rotPara(r,p));
@@ -2133,7 +2133,7 @@ function rotHojeCard(){
 }
 function vPainel(){
   const mine=S.os.filter(inUnit), q=queue(), tri=triagem(), chefe=isChefe();
-  const myQ = chefe ? q : q.filter(x=>!S.me||x.o.responsavel===S.me);
+  const myQ = chefe ? q : q.filter(x=>!S.me||ehDe(x.o,S.me));
   const cnt={r:0,y:0,g:0}; myQ.forEach(x=>cnt[sem(x.o).k]++);
   const blocked=[...new Set(q.filter(x=>x.o.bloqueiaSuite&&x.o.local?.startsWith("S:")).map(x=>x.o.local.slice(2)))].sort((a,b)=>a-b);
   let h='<h1>'+esc(greeting())+'</h1><p class="sub">'+esc(dateLong())+' · '+esc(curUnit().nome)+'</p>'+installBanner()+workBanner()+workNow();
@@ -2161,7 +2161,7 @@ function vPainel(){
   const filt='<div class="filters"><div class="seg" role="group" aria-label="Situação">'+[["abertas","A fazer"],["concluidas","Histórico"]].map(([k,l])=>'<button data-act="fstatus" data-v="'+k+'" aria-pressed="'+(f.status===k)+'">'+l+'</button>').join("")+'</div>'+
     '<label class="sr" for="fResp">Responsável</label><select id="fResp" class="sel" data-ch="fresp"><option value="">Toda a equipe</option>'+S.cfg.equipe.filter(e=>e.papel!=="recepcao").map(e=>e.nome).map(p=>'<option value="'+esc(p)+'"'+(f.resp===p?" selected":"")+'>'+esc(p===S.me?"Só as minhas":p)+'</option>').join("")+'</select></div>';
   if(f.status==="concluidas") return h+'<section class="sec">'+'<div class="sec-h"><h2>Histórico</h2></div>'+filt+vHist()+'</section>';
-  let list=q; if(f.resp) list=list.filter(x=>x.o.responsavel===f.resp);
+  let list=q; if(f.resp) list=list.filter(x=>ehDe(x.o,f.resp));
   h+='<section class="sec"><div class="sec-h"><h2>'+(f.urg?UICON[f.urg]+" "+URG[f.urg]:(f.resp&&f.resp===S.me?"Suas tarefas":"Pendências"))+'</h2>'+(f.urg?'<button class="btn sm ghost" data-act="furg" data-v="'+f.urg+'">Mostrar todas</button>':'')+'</div>'+filt;
   const groups=[1,3,4].map(u=>({u, items:list.filter(x=>urgOf(x.o.prioridade)===u)})).filter(g=>g.items.length && (!f.urg||f.urg===g.u));
   h+= groups.length ? groups.map(g=>'<div class="ugrp u'+g.u+'"><div class="ugrp-h"><b>'+UICON[g.u]+' '+URG[g.u]+'</b><span>'+g.items.length+'</span></div><div class="list2">'+g.items.map(row).join("")+'</div></div>').join("") : '<div class="empty" style="margin-top:12px">Nada por aqui.</div>';
@@ -2180,7 +2180,7 @@ function vPendente(){
 function histOS(){
   const ym=S.hm||todayStr().slice(0,7);
   let done=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&!isCancel(o));
-  if(S.f.resp) done=done.filter(o=>o.responsavel===S.f.resp);
+  if(S.f.resp) done=done.filter(o=>ehDe(o,S.f.resp));
   return done.sort((a,b)=>new Date(b.concluidoEm)-new Date(a.concluidoEm));
 }
 function histRot(){
@@ -2225,9 +2225,9 @@ function exportCsv(){
 /* ===================== MEU DIA (técnico) ===================== */
 function meuDia(){
   const t=todayStr(), me=S.me;
-  const tarefas=queue().filter(x=>x.o.responsavel===me).map(x=>x.o);
+  const tarefas=queue().filter(x=>ehDe(x.o,me)).map(x=>x.o);
   const rot=rotDoDia(new Date().getDay()).filter(rotMinha);
-  const feitasOS=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&o.responsavel===me&&!isCancel(o));
+  const feitasOS=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm)===t&&ehDe(o,me)&&!isCancel(o));
   const rotFeitas=rot.filter(r=>rotFeita(r,t)), rotPend=rot.filter(r=>!rotFeita(r,t));
   return {tarefas, rot, rotFeitas, rotPend, feitasOS};
 }
@@ -2471,11 +2471,11 @@ function vPrev(){
 
 /* ----- equipe e ajustes ----- */
 function desemp(p, ym){
-  const os=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&o.responsavel===p.nome&&!isCancel(o));
+  const os=S.os.filter(o=>inUnit(o)&&o.status==="concluida"&&o.concluidoEm&&localDate(o.concluidoEm).slice(0,7)===ym&&ehDe(o,p.nome)&&!isCancel(o));
   const ok=os.filter(noPrazo).length, ct=os.filter(o=>o.iniciadoEm), med=ct.length?Math.round(ct.reduce((t,o)=>t+durMin(o.iniciadoEm,o.concluidoEm),0)/ct.length):0;
   const [y,m]=ym.split("-").map(Number), last=new Date(y,m,0).getDate(), hoje=todayStr(); let prog=0, feitas=0;
   rotinas().filter(r=>p.papel==="tecnico"?rotPara(r,p):r.responsavel===p.nome).forEach(r=>{ for(let d=1; d<=last; d++){ const ds=y+"-"+pad(m)+"-"+pad(d); if(ds>hoje) break; if(ds<(r.criadoEm||"").slice(0,10)) continue; if((r.dias||[]).includes(dowOf(ds))){ prog++; if(r.feitas&&r.feitas[ds]) feitas++; } } });
-  const late=queue().filter(x=>x.o.responsavel===p.nome&&sem(x.o).k==="r").length;
+  const late=queue().filter(x=>ehDe(x.o,p.nome)&&sem(x.o).k==="r").length;
   const relatos=S.os.filter(o=>inUnit(o)&&o.relatadoPor===p.nome&&localDate(o.criadoEm).slice(0,7)===ym).length;
   return {n:os.length, pct:os.length?Math.round(ok/os.length*100):null, med, prog, feitas, rpct:prog?Math.round(feitas/prog*100):null, late, relatos};
 }
@@ -2597,6 +2597,14 @@ function refreshSheet(){
   if(aid){ const n=document.getElementById(aid); if(n){ n.focus({preventScroll:true}); try{ if(sel!=null&&n.setSelectionRange) n.setSelectionRange(sel,sel); }catch(e){} } }
 }
 function localOptions(cur){ return '<option value="">Escolha</option><optgroup label="Suítes">'+suites().map(n=>'<option value="S:'+n+'"'+(cur==="S:"+n?" selected":"")+'>Suíte '+n+'</option>').join("")+'</optgroup><optgroup label="Áreas comuns">'+S.cfg.areas.map(a=>'<option value="A:'+esc(a)+'"'+(cur==="A:"+a?" selected":"")+'>'+esc(a)+'</option>').join("")+'</optgroup>'; }
+function ehDe(o,nome){ return !!o && !!nome && (o.responsavel===nome || (o.ajudantes||[]).includes(nome)); }
+function limpaAjud(o){ if(o.ajudantes) o.ajudantes=o.ajudantes.filter(n=>n&&n!==o.responsavel); }
+function quemTxt(o){ const a=(o.ajudantes||[]).filter(n=>n&&n!==o.responsavel); return o.responsavel ? first(o.responsavel)+(a.length?" + "+a.map(first).join(", "):"") : (a.length?a.map(first).join(", "):""); }
+function ajudHTML(o){
+  const tecs=S.cfg.equipe.filter(e=>e.papel==="tecnico"&&e.nome&&e.nome!==o.responsavel); if(!tecs.length) return "";
+  const aj=o.ajudantes||[];
+  return '<div class="field"><span class="lbl">Junto com <span class="muted" style="font-weight:500">(opcional)</span></span><div class="pick">'+tecs.map(e=>'<button class="pk" data-act="ajud" data-v="'+esc(e.nome)+'" aria-pressed="'+aj.includes(e.nome)+'">'+esc(e.nome)+'</button>').join("")+'</div>'+(aj.length?'<span class="hint">A tarefa aparece para '+esc(quemTxt(o))+'. Quem terminar primeiro conclui para todos.</span>':'')+'</div>';
+}
 function respOptions(cur, emptyLabel){
   const op=e=>'<option value="'+esc(e.nome)+'"'+(cur===e.nome?" selected":"")+'>'+esc(e.nome)+'</option>';
   const tec=S.cfg.equipe.filter(e=>e.papel==="tecnico"), ger=S.cfg.equipe.filter(e=>e.papel==="gerente"||e.papel==="supervisor");
@@ -2651,7 +2659,7 @@ function sheetOS(F){
     const s=o.iaSugestao;
     h+='<div class="triage"><div class="triage-h"><b>Avaliar relato</b><span>Escolha a urgência e quem resolve. Depois disso vai para a fila.</span></div>'+
       (s?'<div class="iabox">✦ <b>IA sugere '+esc(URG[s.prioridade])+'</b>'+(s.motivo?'<span>'+esc(s.motivo)+'</span>':'')+'</div>':'')+
-      '<div class="field"><span class="lbl">Urgência</span>'+urgSeg(o)+'</div>'+prazoBox(o,F,true)+tempoBox(o)+
+      ajudHTML(o)+'<div class="field"><span class="lbl">Urgência</span>'+urgSeg(o)+'</div>'+prazoBox(o,F,true)+tempoBox(o)+
       '<div class="field"><label for="fResp2">Quem resolve?</label><select id="fResp2" class="sel" data-of="responsavel">'+respOptions(o.responsavel)+'</select>'+(F.autoResp&&o.responsavel===F.autoResp?'<span class="hint">Sugerido pelo setor: '+esc(cat(o.categoria).n)+'</span>':'')+'</div>'+
       (o.local?.startsWith("S:")?'<label class="toggle"><input type="checkbox" data-of="bloqueiaSuite"'+(o.bloqueiaSuite?" checked":"")+'><span><b>Suíte fora de venda</b><small>Não pode receber convidado até resolver.</small></span></label>':'')+
       '<div class="acts"><button class="btn big pri" data-act="approve">✅ Aprovar e enviar</button><button class="btn big" data-act="archive">Não procede</button></div></div>';
@@ -2670,17 +2678,17 @@ function sheetOS(F){
 
   if(chefe && !(tri && !isNew)){
     h+='<div class="grid2"><div class="field"><label for="fLoc">Onde?</label><select id="fLoc" class="sel" data-of="local">'+localOptions(o.local)+'</select></div>'+
-      '<div class="field"><label for="fResp2">Quem resolve?</label><select id="fResp2" class="sel" data-of="responsavel">'+respOptions(o.responsavel)+'</select>'+(o.responsavel&&o.responsavel===S.me?'<span class="hint" style="color:var(--y)">⚠️ Está com você. Para o técnico fazer, escolha ele aqui.</span>':isNew&&F.autoResp&&o.responsavel===F.autoResp?'<span class="hint">Vai para '+esc(first(o.responsavel))+' ('+esc(cat(o.categoria).n)+')</span>':'')+'</div></div>';
+      '<div class="field"><label for="fResp2">Quem resolve?</label><select id="fResp2" class="sel" data-of="responsavel">'+respOptions(o.responsavel)+'</select>'+(o.responsavel&&ehDe(o,S.me)?'<span class="hint" style="color:var(--y)">⚠️ Está com você. Para o técnico fazer, escolha ele aqui.</span>':isNew&&F.autoResp&&o.responsavel===F.autoResp?'<span class="hint">Vai para '+esc(first(o.responsavel))+' ('+esc(cat(o.categoria).n)+')</span>':'')+'</div></div>';
     if(isNew){ h+='<button class="btn sm ghost" data-act="multiTog" style="justify-self:start">'+(F.multiOn?"✓ Várias suítes":"+ Várias suítes de uma vez")+'</button>';
       if(F.multiOn) h+='<div class="field"><span class="lbl">Marque as suítes'+((F.multi||[]).length?' · '+F.multi.length+' escolhida'+(F.multi.length>1?'s':''):'')+'</span><div class="ns2">'+suites().map(n=>'<button class="'+((F.multi||[]).includes("S:"+n)?"on":"")+'" data-act="multiS" data-v="S:'+n+'">'+n+'</button>').join("")+'</div><span class="hint">Vira uma tarefa por suíte, e o técnico vê tudo junto num cartão só.</span></div>'; }
-    h+='<div class="field"><span class="lbl">Urgência</span>'+urgSeg(o)+'</div>'+prazoBox(o,F,false)+tempoBox(o);
+    h+=ajudHTML(o)+'<div class="field"><span class="lbl">Urgência</span>'+urgSeg(o)+'</div>'+prazoBox(o,F,false)+tempoBox(o);
     if(o.local?.startsWith("S:")) h+='<label class="toggle"><input type="checkbox" data-of="bloqueiaSuite"'+(o.bloqueiaSuite?" checked":"")+'><span><b>Suíte fora de venda</b><small>Não pode receber convidado até resolver.</small></span></label>';
   } else if(chefe && tri && !isNew){
     h+='<div class="field"><label for="fLoc">Onde?</label><select id="fLoc" class="sel" data-of="local">'+localOptions(o.local)+'</select></div>';
   } else if(isNew){
     h+='<div class="field"><label for="fLoc">Onde?</label><select id="fLoc" class="sel" data-of="local">'+localOptions(o.local)+'</select></div>';
   } else {
-    h+='<div class="kv">'+kv("Onde",esc(localLabel(o.local)))+kv("Quem resolve",esc(o.responsavel||"A definir"))+kv("Urgência",tri?"A definir":UICON[urgOf(o.prioridade)]+" "+esc(URG[urgOf(o.prioridade)]))+kv("Prazo",tri?"A definir":(o.prazo?fmtD(o.prazo)+" · "+esc(sm.t.toLowerCase()):"Sem prazo"))+kv("Tempo previsto",o.tempo?"⏱ "+fmtMin(o.tempo):"Não definido")+kv("Situação",esc(STATUS[o.status]))+'</div>';
+    h+='<div class="kv">'+kv("Onde",esc(localLabel(o.local)))+kv("Quem resolve",esc(quemTxt(o)||"A definir"))+kv("Urgência",tri?"A definir":UICON[urgOf(o.prioridade)]+" "+esc(URG[urgOf(o.prioridade)]))+kv("Prazo",tri?"A definir":(o.prazo?fmtD(o.prazo)+" · "+esc(sm.t.toLowerCase()):"Sem prazo"))+kv("Tempo previsto",o.tempo?"⏱ "+fmtMin(o.tempo):"Não definido")+kv("Situação",esc(STATUS[o.status]))+'</div>';
   }
 
   if(!isNew && (o.status==="andamento"||o.status==="concluida")) h+='<div class="field"><label for="fSol">O que foi feito?</label><textarea id="fSol" class="inp" data-of="solucao" placeholder="Opcional, ajuda na próxima vez" style="min-height:60px">'+esc(o.solucao)+'</textarea></div>';
@@ -2791,6 +2799,8 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  ajud(el){ const F=S.form, o=F.o, n=el.dataset.v; o.ajudantes=(o.ajudantes||[]); o.ajudantes=o.ajudantes.includes(n)?o.ajudantes.filter(x=>x!==n):o.ajudantes.concat([n]); haptic();
+    if(F.mode==="edit" && o.status!=="triagem"){ hist(o,"Equipe: "+(quemTxt(o)||"—")); commitEdit(); } else refreshSheet(); },
   ppTog(el){ const k=el.dataset.v; S.ppOpen=S.ppOpen||{}; S.ppOpen[k]=!S.ppOpen[k]; try{ localStorage.setItem("luvman.pp",JSON.stringify(S.ppOpen)); }catch(e){} haptic(); render(); },
   grpDone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=clone(o); if(!c.iniciadoEm) c.iniciadoEm=nowISO(); if(!c.responsavel) c.responsavel=S.me; setStatus(c,"concluida"); write("os",c); haptic(); toastUndo("Suíte "+(o.local||"").slice(2)+" pronta!", ()=>write("os",antes)); },
   multiTog(){ const F=S.form; F.multiOn=!F.multiOn; if(F.multiOn){ F.multi=F.o.local&&F.o.local.startsWith("S:")?[F.o.local]:[]; } refreshSheet(); },
@@ -2857,7 +2867,7 @@ const A = {
   tstart(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=setStatus(clone(o),"andamento"); if(!c.responsavel) c.responsavel=S.me; write("os",c); haptic(); toastUndo("Começou", ()=>write("os",antes));
     if(c.local && S.me && (!myAtiv()||myAtiv().local!==c.local)) startWork(c.local,true); },
   async tdone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=setStatus(clone(o),"concluida"); write("os",c); haptic(); toastUndo("Terminado!", ()=>write("os",antes));
-    const a=myAtiv(); if(a && a.local===c.local && !S.os.some(x=>x.id!==c.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&x.responsavel===S.me)) endWork(true); },
+    const a=myAtiv(); if(a && a.local===c.local && !S.os.some(x=>x.id!==c.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&ehDe(x,S.me))) endWork(true); },
   mdDone(){ S.mdDone=!S.mdDone; render(); },
   guia(){ openSheet({type:"guia", i:0}); },
   guiaNext(){ S.form.i=(S.form.i||0)+1; refreshSheet(); },
@@ -2988,7 +2998,7 @@ const A = {
       lista.forEach((l,i)=>{ const c=clone(base); c.id=uid("os"); c.local=l; c.grupoId=gid; c.numero=i===0?o.numero:nextNum(); c.historico=[]; hist(c,"OS aberta em grupo ("+lista.length+" suítes)"+(c.responsavel?" para "+c.responsavel:"")); write("os",c); });
       S.form=null; closeSheet(); haptic(); toast(lista.length+" suítes abertas"+(o.responsavel?" para "+first(o.responsavel):""), true); return; }
     S.form=null; write("os",o); closeSheet(); haptic();
-    toast(chefe ? osCode(o)+" aberta"+(o.responsavel?" para "+first(o.responsavel):"") : "Enviado para a gerência avaliar", true);
+    toast(chefe ? osCode(o)+" aberta"+(o.responsavel?" para "+quemTxt(o):"") : "Enviado para a gerência avaliar", true);
   },
   async delOS(){ const o=S.form.o; if(!await ask("Excluir a "+osCode(o)+"? Isso não pode ser desfeito.","Excluir",true)) return; remove("os",o.id); closeSheet(); toast(osCode(o)+" excluída"); },
   wa(){ const o=S.form.o, p=personByName(o.responsavel); openWa(isChefe()&&p&&p.whats, ficha(o)); },
@@ -3101,6 +3111,7 @@ document.addEventListener("change", e=>{
     else if(el.type==="checkbox") o[k]=el.checked; else o[k]=el.value;
     if(k==="prazo"){ o._prazoAuto=false; F.prazoTouched=true; F.prazoCustom=true; if(F.mode==="edit"&&o.status!=="triagem") hist(o,"Prazo: "+(o.prazo?fmtD(o.prazo):"sem prazo")); }
     if(k==="local" && !o.local.startsWith("S:")) o.bloqueiaSuite=false;
+    if(k==="responsavel") limpaAjud(o);
     if(F.mode==="edit"){
       if(k==="responsavel" && o.status!=="triagem") hist(o,"Responsável: "+(o.responsavel||"nenhum"));
       if(k==="bloqueiaSuite" && o.status!=="triagem") hist(o,o.bloqueiaSuite?"Suíte fora de venda":"Suíte liberada");
