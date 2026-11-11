@@ -897,6 +897,31 @@ div.sc-b{cursor:default}
 .gc{min-width:44px;height:38px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font:800 15px var(--font);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
 .gc.nx{border-color:var(--g);box-shadow:0 0 0 2px color-mix(in srgb,var(--g) 30%,transparent)}
 .gc.ok{background:var(--g-soft);border-color:transparent;color:var(--g);cursor:default}
+.acs{display:grid;gap:10px;margin-top:18px}
+.ac{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.ac.hot{border-color:color-mix(in srgb,var(--r) 35%,var(--line))}
+.ac-h{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;width:100%;padding:14px}
+.ac-h[disabled]{cursor:default}
+.ac-i{width:42px;height:42px;border-radius:12px;background:var(--surface-2);color:var(--ink-2);display:grid;place-items:center;flex:none}
+.ac.hot .ac-i{background:var(--r-soft);color:var(--r)}
+.ac-t{flex:1;min-width:0;display:grid;gap:1px}
+.ac-t b{font-size:16px;font-weight:800}
+.ac-t span{font-size:12.5px;color:var(--ink-3)}
+.ac-p{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.cp{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:12px;font-size:12px;font-weight:800}
+.cp i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.cp-r{background:var(--r-soft);color:var(--r)} .cp-y{background:var(--y-soft);color:var(--y)} .cp-g{background:var(--g-soft);color:var(--g)}
+.ac-c{color:var(--ink-3);transition:transform .2s;display:grid}
+.ac.open .ac-c{transform:rotate(90deg)}
+.ac-ok{width:26px;height:26px;border-radius:50%;background:var(--g-soft);color:var(--g);display:grid;place-items:center}
+.ac-b{padding:0 12px 14px;display:grid;gap:14px;animation:viewIn .25s ease}
+.ac-gh{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin:2px 4px 8px}
+.ac-gh i{width:9px;height:9px;border-radius:50%}
+.ac-gh span{margin-left:auto;font-size:12px;letter-spacing:0}
+.ac-gh.c-r{color:var(--r)} .ac-gh.c-r i{background:var(--r)}
+.ac-gh.c-y{color:var(--y)} .ac-gh.c-y i{background:var(--y)}
+.ac-gh.c-g{color:var(--g)} .ac-gh.c-g i{background:var(--g)}
+.ac-b .pp{box-shadow:none}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1972,10 +1997,27 @@ function vPaPum(){
   const pvs=todasPv.filter(p=>{ if(prevMulti(p)){ const pr=prevProg(p); return pr.n<pr.t && (pr.n>0||prevDue(p)<=t); } return prevDue(p)<=t; });
   const fz=d.feitasOS.length+d.rotFeitas.length, tot=demCards.length+rot.length+pvs.length+fz;
   let h='<div class="pp-top"><h1>'+esc(greeting())+'</h1><b>'+fz+'<i>/'+tot+' feitas</i></b></div><div class="pb2"><i style="width:'+(tot?Math.round(fz/tot*100):0)+'%"></i></div>'+installBanner();
-  const sec=(ic,tit,n,body,vazio,hot)=>'<section class="ps"><div class="ps-h"><span class="ps-i">'+li(ic,17)+'</span><b>'+tit+'</b><span class="ps-n'+(hot?" hot":"")+'">'+(n||"✓")+'</span></div>'+(n?'<div class="pp-list">'+body+'</div>':'<div class="ps-v">'+vazio+'</div>')+'</section>';
-  h+=sec("list","Rotina de hoje",rot.length,rot.map(r=>cardPP({k:"rot",r})).join(""),d.rotFeitas.length?"Rotina de hoje feita ✓":"Sem rotina para hoje");
-  h+=sec("wrench","Demandas",demCards.length,demCards.map(x=>x.h).join(""),"Nenhuma demanda agora",tasks.some(o=>cor(o)==="r"));
-  if(todasPv.length) h+=sec("clock","Preventivas",pvs.length,pvs.map(p=>cardPP({k:"pv",p})).join(""),"Nenhuma preventiva para agora");
+  // cores de cada item
+  const corRot=r=>{ const k=rotState(r,t).k; return k==="r"?"r":k==="y"?"y":"g"; };
+  const corPv=p=>{ if(prevMulti(p)&&prevProg(p).n>0) return "y"; const dd=diffDays(prevDue(p)); return dd<0?"r":dd===0?"y":"g"; };
+  const demItens=[...grupos.map(G=>({c:["r","y","g"][Math.min(...G.itens.map(o=>ord[cor(o)]))]||"y", h:cardGrupo(G), and:G.itens.some(o=>o.status==="andamento")})), ...solo.map(o=>({c:(o.status==="aguardando"?"g":cor(o)), h:cardPP({k:"os",o}), and:o.status==="andamento"}))];
+  const rotItens=rot.map(r=>({c:corRot(r), h:cardPP({k:"rot",r})}));
+  const pvItens=pvs.map(p=>({c:corPv(p), h:cardPP({k:"pv",p})}));
+  // qual bloco abre
+  let op=null; try{ op=JSON.parse(localStorage.getItem("luvman.pp")||"null"); }catch(e){}
+  if(!S.ppOpen) S.ppOpen = op || { dem: demItens.some(x=>x.c==="r"||x.and), rot: !demItens.length&&rotItens.length>0, pv:false };
+  const conta=arr=>({r:arr.filter(x=>x.c==="r").length, y:arr.filter(x=>x.c==="y").length, g:arr.filter(x=>x.c==="g").length});
+  const pills=c=>['r','y','g'].filter(k=>c[k]).map(k=>'<span class="cp cp-'+k+'"><i></i>'+c[k]+'</span>').join("");
+  const NOME={r:"Urgente",y:"Normal",g:"Pode esperar"}, NOMEROT={r:"Atrasadas",y:"Agora",g:"Mais tarde"}, NOMEPV={r:"Atrasadas",y:"Hoje / em andamento",g:"Em breve"};
+  const corpo=(arr,nomes)=>['r','y','g'].map(k=>{ const g=arr.filter(x=>x.c===k); return g.length?'<div class="ac-g"><div class="ac-gh c-'+k+'"><i></i>'+nomes[k]+'<span>'+g.length+'</span></div><div class="pp-list">'+g.map(x=>x.h).join("")+'</div></div>':''; }).join("");
+  const sec=(key,ic,tit,arr,nomes,vazio)=>{ const c=conta(arr), open=!!S.ppOpen[key]&&arr.length, hot=c.r>0;
+    return '<section class="ac'+(open?" open":"")+(hot?" hot":"")+'"><button class="ac-h" data-act="ppTog" data-v="'+key+'" aria-expanded="'+open+'"'+(arr.length?'':' disabled')+'><span class="ac-i">'+li(ic,20)+'</span><span class="ac-t"><b>'+tit+'</b><span>'+(arr.length?arr.length+(arr.length>1?" para fazer":" para fazer"):esc(vazio))+'</span></span><span class="ac-p">'+pills(c)+'</span>'+(arr.length?'<span class="ac-c">'+li("chev",18)+'</span>':'<span class="ac-ok">'+li("check",16,"currentColor",2.6)+'</span>')+'</button>'+
+      (open?'<div class="ac-b">'+corpo(arr,nomes)+'</div>':'')+'</section>'; };
+  h+='<div class="acs">';
+  h+=sec("dem","wrench","Demandas",demItens,NOME,"Nenhuma demanda agora");
+  h+=sec("rot","list","Rotina de hoje",rotItens,NOMEROT,d.rotFeitas.length?"Rotina de hoje feita":"Sem rotina para hoje");
+  if(todasPv.length) h+=sec("pv","clock","Preventivas",pvItens,NOMEPV,"Nenhuma para agora");
+  h+='</div>';
   const fe=d.feitasOS.filter(o=>!isCancel(o)).length+d.rotFeitas.length;
   h+=arqLinha(fe,0,fe>1?"feitas hoje":"feita hoje");
   h+='<div style="text-align:center;margin-top:10px"><button class="btn sm ghost" data-act="tab" data-tab="prev">Minhas rotinas e preventivas</button></div>';
@@ -2749,6 +2791,7 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  ppTog(el){ const k=el.dataset.v; S.ppOpen=S.ppOpen||{}; S.ppOpen[k]=!S.ppOpen[k]; try{ localStorage.setItem("luvman.pp",JSON.stringify(S.ppOpen)); }catch(e){} haptic(); render(); },
   grpDone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=clone(o); if(!c.iniciadoEm) c.iniciadoEm=nowISO(); if(!c.responsavel) c.responsavel=S.me; setStatus(c,"concluida"); write("os",c); haptic(); toastUndo("Suíte "+(o.local||"").slice(2)+" pronta!", ()=>write("os",antes)); },
   multiTog(){ const F=S.form; F.multiOn=!F.multiOn; if(F.multiOn){ F.multi=F.o.local&&F.o.local.startsWith("S:")?[F.o.local]:[]; } refreshSheet(); },
   multiS(el){ const F=S.form, v=el.dataset.v; F.multi=F.multi||[]; F.multi=F.multi.includes(v)?F.multi.filter(x=>x!==v):F.multi.concat([v]); F.multi.sort((a,b)=>suiteNum(a)-suiteNum(b)); F.o.local=F.multi[0]||""; haptic(); refreshSheet(); },
