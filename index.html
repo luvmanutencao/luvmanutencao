@@ -922,6 +922,9 @@ div.sc-b{cursor:default}
 .ac-gh.c-y{color:var(--y)} .ac-gh.c-y i{background:var(--y)}
 .ac-gh.c-g{color:var(--g)} .ac-gh.c-g i{background:var(--g)}
 .ac-b .pp{box-shadow:none}
+.pk.trv{background:var(--g-soft);border-color:transparent;color:var(--g);font-weight:700}
+.pk.trv.off{background:var(--r-soft);color:var(--r)}
+.banner.warn{background:var(--y-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--y) 35%,transparent);border-radius:14px;padding:12px 14px;font-size:13.5px}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1059,6 +1062,7 @@ main{padding-top:16px}
 <div class="splash" id="splash" aria-hidden="true"><div class="sp-bar"><i></i></div><div class="lock"><svg class="luv" viewBox="5.0 7.6 353.5 168.8" role="img" aria-label="LUV"><use href="#luvL"/></svg><div class="lock-l"><svg aria-hidden="true"><use href="#wrench"/></svg>Manutenção</div></div></div>
 <div class="login" id="login" hidden><div class="login-in"><div class="lock"><svg class="luv" viewBox="5.0 7.6 353.5 168.8" role="img" aria-label="LUV"><use href="#luvL"/></svg><div class="lock-l"><svg aria-hidden="true"><use href="#wrench"/></svg>Manutenção</div></div>
 <div class="login-f" id="loginF"><div class="field"><label for="lgEmail">CPF</label><input id="lgEmail" class="inp" type="text" inputmode="numeric" autocomplete="username" placeholder="000.000.000-00" maxlength="14" data-mask="cpf"></div>
+<div class="field rec-only"><label for="lgUnit">Unidade <span style="font-weight:500;opacity:.7">(ex.: joinville, blumenau)</span></label><input id="lgUnit" class="inp" type="text" autocomplete="off" autocapitalize="none" placeholder="joinville"></div>
 <div class="field"><label for="lgPass">Senha</label><input id="lgPass" class="inp" type="password" autocomplete="current-password" data-in="lgpass"></div>
 <p id="loginMsg" class="login-msg" hidden></p><button id="lgBtn" class="btn brass big" data-act="login">Entrar</button><button class="btn big ghost-light" id="lgInstall" data-act="install" hidden>📲 Instalar o app no celular</button><button class="linkbtn rec-only-hide" data-act="recMode">📣 Aparelho da recepção? <b>Entrar aqui</b></button><button class="linkbtn rec-only" data-act="recMode">← Entrar com CPF</button><button class="linkbtn rec-only-hide" data-act="showSignup">Primeiro acesso? <b>Criar minha conta</b></button><p class="login-hint">Esqueceu a senha? Fale com a supervisão.</p></div>
 <div class="login-f" id="signupF" hidden>
@@ -1202,7 +1206,8 @@ function localLabel(l){ if(!l) return "Sem local"; return l.startsWith("S:") ? "
 function inUnit(o){ const first=S.cfg.unidades[0]?.id; return (o.unidade||first)===curUnit().id; }
 function isOpen(o){ return o.status!=="concluida"; }
 function names(){ return S.cfg.equipe.map(e=>e.nome); }
-function tecsUnidade(){ const u=(typeof curUnit==="function")?curUnit().id:null; return S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!u||!(e.unidades||[]).length||e.unidades.includes(u))); }
+function travado(e,u){ return !!e && (e.pausas||[]).includes(u||curUnit().id); }
+function tecsUnidade(){ const u=(typeof curUnit==="function")?curUnit().id:null; return S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!u||!(e.unidades||[]).length||e.unidades.includes(u))&&!travado(e,u)); }
 function personFor(catId){ return tecsUnidade().find(e=>e.cats.includes(catId)); }
 function tecFor(catId){ const t=tecsUnidade(); return t.find(e=>e.cats.includes(catId)) || t[0] || null; }
 function personByName(n){ return S.cfg.equipe.find(e=>e.nome===n); }
@@ -1215,7 +1220,7 @@ function normCfg(c){
   if(!Array.isArray(o.areas)) o.areas=clone(DEF_CFG.areas);
   if(!Array.isArray(o.equipe)) o.equipe=clone(DEF_CFG.equipe);
   o.equipe=o.equipe.map((e,i)=> typeof e==="string" ? {id:"e"+(i+1), nome:e, whats:"", cats:[], cpf:"", papel:"tecnico", unidades:[]} :
-    {id:e.id||("e"+(i+1)), nome:e.nome||"Sem nome", whats:e.whats||"", cats:Array.isArray(e.cats)?e.cats:[], cpf:e.cpf||"", papel:["tecnico","recepcao","supervisor","gerente"].includes(e.papel)?e.papel:"tecnico", unidades:Array.isArray(e.unidades)?e.unidades:[]});
+    {id:e.id||("e"+(i+1)), nome:e.nome||"Sem nome", whats:e.whats||"", cats:Array.isArray(e.cats)?e.cats:[], cpf:e.cpf||"", papel:["tecnico","recepcao","supervisor","gerente"].includes(e.papel)?e.papel:"tecnico", unidades:Array.isArray(e.unidades)?e.unidades:[], pausas:Array.isArray(e.pausas)?e.pausas:[]});
   return o;
 }
 function waLink(num, text){ let d=String(num||"").replace(/\D/g,""); if(d && d.length<=11) d="55"+d; return "https://wa.me/"+d+"?text="+encodeURIComponent(text); }
@@ -1235,7 +1240,10 @@ function validCpf(v){ const d=digits(v); if(d.length!==11||/^(\d)\1{10}$/.test(d
   return calc(9)===+d[9] && calc(10)===+d[10]; }
 const REC_KEY="recepcao";
 function chaveCpf(v){ const d=digits(v); return d || String(v||"").trim().toLowerCase(); }
-function loginEmail(cpf){ if(cpf===REC_KEY) return REC_KEY+"@"+LOGIN_DOMAIN; return digits(cpf)+"@"+LOGIN_DOMAIN; }
+function isRec(v){ return String(v||"").toLowerCase().startsWith(REC_KEY); }
+function slugU(t){ return norm(String(t||"")).replace(/^luv\s*/,"").replace(/[^a-z0-9]+/g,"").slice(0,24); }
+function recKeyUnit(u){ return REC_KEY+"."+slugU(u.nome); }
+function loginEmail(cpf){ if(isRec(cpf)) return String(cpf).toLowerCase()+"@"+LOGIN_DOMAIN; return digits(cpf)+"@"+LOGIN_DOMAIN; }
 function whoAmI(){
   const email=(S.session&&S.session.user&&S.session.user.email)||"", cpf=email.split("@")[0];
   const me=S.cfg.equipe.find(e=>chaveCpf(e.cpf) && chaveCpf(e.cpf)===cpf);
@@ -1442,7 +1450,9 @@ async function initRuntime(){
 }
 async function doLogin(){
   const recMode=document.getElementById("login").classList.contains("rec");
-  const cpf=recMode?REC_KEY:digits(document.getElementById("lgEmail").value), senha=document.getElementById("lgPass").value;
+  const un=recMode?slugU(document.getElementById("lgUnit").value):"";
+  if(recMode){ try{ localStorage.setItem("luvman.recunit", document.getElementById("lgUnit").value.trim()); }catch(e){} }
+  const cpf=recMode?(un?REC_KEY+"."+un:REC_KEY):digits(document.getElementById("lgEmail").value), senha=document.getElementById("lgPass").value;
   const btn=document.getElementById("lgBtn"), m=document.getElementById("loginMsg"); m.className="login-msg";
   if(!recMode && cpf.length!==11){ m.textContent="Digite o CPF completo, com 11 números."; m.hidden=false; return; }
   if(!senha){ m.textContent="Digite a sua senha."; m.hidden=false; return; }
@@ -1683,7 +1693,14 @@ const ESTADOS=[
  {k:"hoje",i:"🟡",t:"Ainda hoje",d:"Pode esperar algumas horas",p:3,dias:0},
  {k:"depois",i:"🟢",t:"Quando der",d:"Não atrapalha o uso",p:4,dias:3}];
 function probOf(o){ return PROBS.find(x=>x.k===o.probRec) || PROBS.find(x=>x.c===o.categoria) || PROBS[PROBS.length-1]; }
-function tecnicosDaUnidade(){ return S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!(e.unidades||[]).length||e.unidades.includes(curUnit().id))); }
+function tecnicosDaUnidade(){ return tecsUnidade(); }
+function travaHTML(p,i,full){
+  const eu=S.cfg.equipe.find(e=>e.nome===S.me)||{unidades:[]};
+  const us=S.cfg.unidades.filter(u=>!(p.unidades||[]).length||p.unidades.includes(u.id));
+  return '<div class="field"><span class="lbl">Recebe tarefas em</span><div class="pick">'+us.map(u=>{ const t=travado(p,u.id), pode=full||!(eu.unidades||[]).length||eu.unidades.includes(u.id);
+    return '<button class="pk trv'+(t?" off":"")+'" data-act="trava" data-i="'+i+'" data-u="'+esc(u.id)+'"'+(pode?'':' disabled')+'>'+(t?'🔒 Travado em ':'✅ Recebendo em ')+esc(u.nome)+'</button>'; }).join("")+
+    '</div><span class="hint">Travado: não recebe tarefas, chamados nem WhatsApp daquela unidade. Destrave quando ele estiver lá.</span></div>';
+}
 function ding(n){ try{ const C=window.AudioContext||window.webkitAudioContext; if(!C) return; const ctx=ding.c||(ding.c=new C()); const t=ctx.currentTime;
   [0,0.18].slice(0,n||1).forEach((d,i)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type="sine"; o.frequency.value=i?1046:880; g.gain.setValueAtTime(0.0001,t+d); g.gain.exponentialRampToValueAtTime(0.25,t+d+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.35); o.connect(g); g.connect(ctx.destination); o.start(t+d); o.stop(t+d+0.4); }); }catch(e){}
   try{ navigator.vibrate&&navigator.vibrate([80,60,80]); }catch(e){} }
@@ -1996,7 +2013,9 @@ function vPaPum(){
   const todasPv=preventivas();
   const pvs=todasPv.filter(p=>{ if(prevMulti(p)){ const pr=prevProg(p); return pr.n<pr.t && (pr.n>0||prevDue(p)<=t); } return prevDue(p)<=t; });
   const fz=d.feitasOS.length+d.rotFeitas.length, tot=demCards.length+rot.length+pvs.length+fz;
-  let h='<div class="pp-top"><h1>'+esc(greeting())+'</h1><b>'+fz+'<i>/'+tot+' feitas</i></b></div><div class="pb2"><i style="width:'+(tot?Math.round(fz/tot*100):0)+'%"></i></div>'+installBanner();
+  const eu=S.cfg.equipe.find(e=>e.nome===S.me);
+  const trav = travado(eu) ? '<div class="banner warn" style="margin-top:12px">🔒 Você está <b>travado em '+esc(curUnit().nome)+'</b>: não recebe tarefas daqui até a gerência liberar.</div>' : '';
+  let h='<div class="pp-top"><h1>'+esc(greeting())+'</h1><b>'+fz+'<i>/'+tot+' feitas</i></b></div><div class="pb2"><i style="width:'+(tot?Math.round(fz/tot*100):0)+'%"></i></div>'+trav+installBanner();
   // cores de cada item
   const corRot=r=>{ const k=rotState(r,t).k; return k==="r"?"r":k==="y"?"y":"g"; };
   const corPv=p=>{ if(prevMulti(p)&&prevProg(p).n>0) return "y"; const dd=diffDays(prevDue(p)); return dd<0?"r":dd===0?"y":"g"; };
@@ -2495,7 +2514,7 @@ function vEquipe(){
   const segEq='<div class="seg sec" role="group"><button data-act="eqv" data-v="pessoas" aria-pressed="'+(S.eqv!=="desemp")+'">Pessoas</button><button data-act="eqv" data-v="desemp" aria-pressed="'+(S.eqv==="desemp")+'">📊 Desempenho</button></div>';
   if(S.eqv==="desemp") return '<div class="sec-h" style="margin:0"><div><h1>Equipe</h1><p class="sub">Como cada pessoa foi no mês.</p></div></div>'+segEq+vDesemp();
   const semResp=queue().filter(x=>!x.o.responsavel && !personFor(x.o.categoria)).length;
-  let h='<div class="sec-h" style="margin:0"><div><h1>Equipe</h1><p class="sub">Quem é quem, o que cada um cuida e como entra no app.</p></div><button class="btn" data-act="addPerson">Adicionar pessoa</button></div>'+segEq;
+  let h='<div class="sec-h" style="margin:0"><div><h1>Equipe</h1><p class="sub">Quem é quem, o que cada um cuida e como entra no app.</p></div><button class="btn" data-act="addPerson">Adicionar pessoa</button>'+(S.cfg.unidades.length>1?'<button class="btn ghost" data-act="addRecUnit">+ Recepção de '+esc(curUnit().nome)+'</button>':'')+'</div>'+segEq;
   const cadsV=S.cads.filter(c=>fullAccess()||!c.unidade||allowedUnits().some(u=>u.id===c.unidade));
   if(cadsV.length) h+='<section class="tri-box sec"><div class="sec-h"><h2>👤 Pedidos de acesso <span class="cnt">'+cadsV.length+'</span></h2><span class="muted" style="font-size:13px">Escolha: técnico ou recepção</span></div><div class="cards">'+
     cadsV.slice().sort((a,b)=>String(b.em).localeCompare(String(a.em))).map(c=>'<div class="card"><div class="req"><span class="me-av">'+esc(String(c.nome||"?").split(" ").slice(0,2).map(x=>x[0]).join("").toUpperCase())+'</span><div><b>'+esc(c.nome||"Sem nome")+'</b><div class="muted" style="font-size:13px">CPF '+esc(maskCpf(c.cpf||c.id))+(c.whats?' · '+esc(c.whats):'')+(c.unidade&&S.cfg.unidades.length>1?' · 🔒 '+esc(unitNames([c.unidade])):'')+(c.em?' · '+ago(c.em):'')+'</div></div></div>'+
@@ -2511,11 +2530,12 @@ function vEquipe(){
     const isMe=digits(p.cpf)&&digits(p.cpf)===S.cpf;
     return '<div class="card person"><div class="grid2"><div class="field"><label for="pn'+i+'">Nome</label><input id="pn'+i+'" class="inp" value="'+esc(p.nome)+'" data-eq="nome" data-i="'+i+'"></div>'+
       '<div class="field"><label for="pw'+i+'">WhatsApp</label><input id="pw'+i+'" class="inp" type="tel" inputmode="tel" placeholder="(47) 99999-9999" value="'+esc(p.whats)+'" data-eq="whats" data-i="'+i+'"></div></div>'+
-      (chaveCpf(p.cpf)===REC_KEY ? '<div class="loginid">📣 <b>Conta do aparelho da recepção</b> · entra pelo botão "Aparelho da recepção" na tela de login. Coloque acima o WhatsApp do aparelho para receber os avisos de suíte resolvida.</div>' :
+      (isRec(chaveCpf(p.cpf)) ? '<div class="loginid">📣 <b>Conta do aparelho da recepção</b> · entra pelo botão "Aparelho da recepção" na tela de login'+(chaveCpf(p.cpf).includes(".")?', unidade <b>'+esc(chaveCpf(p.cpf).split(".")[1])+'</b>. Login no Supabase: <code>'+esc(loginEmail(chaveCpf(p.cpf)))+'</code>':'')+'. Coloque acima o WhatsApp do aparelho para receber os avisos de suíte resolvida.</div>' :
       '<div class="grid2"><div class="field"><label for="pc'+i+'">CPF</label><input id="pc'+i+'" class="inp" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="'+esc(maskCpf(p.cpf))+'" data-eq="cpf" data-mask="cpf" data-i="'+i+'"></div>'+
       '<div class="field"><label for="pp'+i+'">Papel</label><select id="pp'+i+'" class="sel" data-eq="papel" data-i="'+i+'"'+((!full&&(p.papel==="supervisor"||isMe))?" disabled":"")+'>'+(full?["tecnico","recepcao","supervisor","gerente"]:p.papel==="supervisor"?["supervisor"]:["tecnico","recepcao","gerente"]).map(k=>'<option value="'+k+'"'+(p.papel===k?" selected":"")+'>'+PAPEL[k]+'</option>').join("")+'</select></div></div>')+
-      (chaveCpf(p.cpf)===REC_KEY?'':digits(p.cpf).length===11?'<div class="loginid">Entra com o CPF. Se a pessoa não criou a conta pelo app, crie no Supabase com: <code>'+esc(loginEmail(p.cpf))+'</code><button class="btn sm" data-act="copyLogin" data-i="'+i+'">Copiar</button></div>':'<div class="hint">Com o CPF preenchido, aparece aqui o login para criar no Supabase.</div>')+
+      (isRec(chaveCpf(p.cpf))?'':digits(p.cpf).length===11?'<div class="loginid">Entra com o CPF. Se a pessoa não criou a conta pelo app, crie no Supabase com: <code>'+esc(loginEmail(p.cpf))+'</code><button class="btn sm" data-act="copyLogin" data-i="'+i+'">Copiar</button></div>':'<div class="hint">Com o CPF preenchido, aparece aqui o login para criar no Supabase.</div>')+
       (multi?'<div class="field"><span class="lbl">'+(full?'Unidades que essa pessoa acessa':'Unidade')+'</span>'+(full?'<div class="pick">'+S.cfg.unidades.map(u=>'<button class="pk" data-act="punit" data-i="'+i+'" data-u="'+esc(u.id)+'" aria-pressed="'+(p.unidades||[]).includes(u.id)+'">🔒 '+esc(u.nome)+'</button>').join("")+'</div><span class="hint">'+((p.unidades||[]).length?'Só vê o que é dessas unidades.':'Sem cadeado: vê todas as unidades.')+'</span>':'<div class="kv"><div style="grid-column:1/-1"><b>🔒 '+esc(unitNames(p.unidades)||"Todas")+'</b></div></div>')+'</div>':'')+
+      (multi&&p.papel==='tecnico'?travaHTML(p,i,full):'')+
       (p.papel==='recepcao'?'':'<div class="field"><span class="lbl">Setores que essa pessoa cuida</span><div class="pick">'+CATS.map(cc=>'<button class="pk" data-act="pcat" data-i="'+i+'" data-c="'+cc.id+'" aria-pressed="'+p.cats.includes(cc.id)+'">'+cc.i+' '+esc(cc.n)+'</button>').join("")+'</div></div>')+
       '<div class="card-h" style="align-items:center"><div class="mini">'+["r","y","g"].map(k=>'<span class="semc chip '+k+'"><i></i>'+c[k]+'</span>').join("")+'</div>'+
       '<div class="card-a">'+(digits(p.cpf).length===11&&!isMe&&(full||p.papel!=="supervisor")?'<button class="btn sm" data-act="resetPw" data-i="'+i+'">🔑 Senha</button>':'')+'<button class="btn sm" data-act="aviso" data-i="'+i+'">Ver aviso</button>'+(S.cfg.equipe.length>1&&!isMe&&(full||p.papel!=="supervisor")?'<button class="btn sm ghost danger" data-act="delPerson" data-i="'+i+'">Remover</button>':'')+'</div></div></div>';
@@ -2607,7 +2627,7 @@ function ajudHTML(o){
 }
 function respOptions(cur, emptyLabel){
   const op=e=>'<option value="'+esc(e.nome)+'"'+(cur===e.nome?" selected":"")+'>'+esc(e.nome)+'</option>';
-  const tec=S.cfg.equipe.filter(e=>e.papel==="tecnico"), ger=S.cfg.equipe.filter(e=>e.papel==="gerente"||e.papel==="supervisor");
+  const tec=S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!travado(e)||e.nome===cur)), ger=S.cfg.equipe.filter(e=>e.papel==="gerente"||e.papel==="supervisor");
   return '<option value="">'+(emptyLabel||"Sem responsável")+'</option>'+(tec.length?'<optgroup label="Técnicos">'+tec.map(op).join("")+'</optgroup>':'')+(ger.length?'<optgroup label="Gerência (só se for você mesmo fazer)">'+ger.map(op).join("")+'</optgroup>':''); }
 const TEMPOS=[[15,"15 min"],[30,"30 min"],[60,"1 h"],[120,"2 h"],[240,"4 h"],[480,"1 dia"]];
 const UICON={1:"",3:"",4:""};
@@ -2788,6 +2808,7 @@ const A = {
   login(){ doLogin(); },
   recMode(){ const L=document.getElementById("login"); L.classList.toggle("rec"); const on=L.classList.contains("rec");
     document.querySelector('label[for="lgPass"]').textContent = on ? "Senha da recepção" : "Senha";
+    if(on){ try{ document.getElementById("lgUnit").value=localStorage.getItem("luvman.recunit")||""; }catch(e){} }
     const m=document.getElementById("loginMsg"); m.hidden=true; setTimeout(()=>document.getElementById(on?"lgPass":"lgEmail").focus(),50); },
   account(){ openSheet({type:"conta"}); },
   prazo(el){ const F=S.form, o=F.o, v=el.dataset.v; if(!isChefe()) return; F.prazoTouched=true; o._prazoAuto=false;
@@ -2799,6 +2820,11 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  trava(el){ const p=S.cfg.equipe[+el.dataset.i], u=el.dataset.u; if(!p) return; p.pausas=(p.pausas||[]); const on=!p.pausas.includes(u); p.pausas=on?p.pausas.concat([u]):p.pausas.filter(x=>x!==u);
+    saveCfg(); haptic(); toast((on?"🔒 "+first(p.nome)+" travado em ":"✅ "+first(p.nome)+" liberado em ")+unitNames([u]), true); },
+  addRecUnit(){ const u=curUnit(), key=recKeyUnit(u); if(S.cfg.equipe.some(e=>chaveCpf(e.cpf)===key)){ toast("A recepção de "+u.nome+" já existe"); return; }
+    S.cfg.equipe.push({id:uid("e"), nome:"Recepção "+u.nome.replace(/^LUV\s*/i,""), cpf:key, papel:"recepcao", whats:"", cats:[], unidades:[u.id], pausas:[]}); saveCfg(); render();
+    toast("Criada. Agora crie o login "+loginEmail(key)+" no Supabase", true); },
   ajud(el){ const F=S.form, o=F.o, n=el.dataset.v; o.ajudantes=(o.ajudantes||[]); o.ajudantes=o.ajudantes.includes(n)?o.ajudantes.filter(x=>x!==n):o.ajudantes.concat([n]); haptic();
     if(F.mode==="edit" && o.status!=="triagem"){ hist(o,"Equipe: "+(quemTxt(o)||"—")); commitEdit(); } else refreshSheet(); },
   ppTog(el){ const k=el.dataset.v; S.ppOpen=S.ppOpen||{}; S.ppOpen[k]=!S.ppOpen[k]; try{ localStorage.setItem("luvman.pp",JSON.stringify(S.ppOpen)); }catch(e){} haptic(); render(); },
