@@ -960,6 +960,10 @@ button:focus:not(:focus-visible){outline:none}
 .arq2-i{width:42px;height:42px;border-radius:12px;background:var(--hero);color:var(--hero-ink);display:grid;place-items:center;flex:none}
 .arq2-t{flex:1;display:grid;gap:1px} .arq2-t b{font-size:15px;font-weight:800} .arq2-t span{font-size:12.5px;color:var(--ink-3)}
 .arq2-c{color:var(--ink-3);display:grid}
+.dcs{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.dc{font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap}
+.dc.r{background:#E5484D;color:#fff} .dc.y{background:rgba(255,214,102,.22);color:#FFE29A} .dc.n{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8)}
+.dia.late .dia-r{background:radial-gradient(closest-side,var(--hero) 78%,transparent 80% 100%),conic-gradient(#3DD68C calc(var(--p)*1%),rgba(229,72,77,.45) 0)}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1802,10 +1806,13 @@ function arqBase(){
     S.role==="tecnico" ? ehDe(o,S.me) :
     S.role==="recepcao" ? o.origem==="recepcao" : true);
 }
-function diaCard(fz, tot, ult){
-  const pct=tot?Math.round(fz/tot*100):0, falta=Math.max(0,tot-fz);
-  const frase = !tot ? "Nada para hoje por enquanto" : falta===0 ? "Tudo feito hoje. Mandou bem!" : fz===0 ? "Bora começar? "+falta+(falta>1?" tarefas":" tarefa")+" esperando" : "Faltam "+falta+(falta>1?" tarefas":" tarefa")+" para fechar o dia";
-  return '<button class="dia" data-act="arq"><span class="dia-r" style="--p:'+pct+'"><b>'+fz+'</b><i>de '+tot+'</i></span><span class="dia-t"><small>SEU DIA</small><b>'+esc(frase)+'</b>'+(ult?'<span class="dia-u">'+li("check",13,"currentColor",2.6)+'Última: '+esc(ult)+'</span>':'')+'</span><span class="dia-go">'+li("archive",18)+'<em>Histórico</em></span></button>';
+function diaCard(x){
+  const meta=x.fz+x.hoje, pct=meta?Math.round(x.fz/meta*100):(x.atras?0:100);
+  const frase = x.atras ? (x.hoje ? "Comece pelas atrasadas e depois as de hoje" : "Coloque em dia o que ficou para trás")
+    : x.hoje ? (x.fz ? "Faltam "+x.hoje+(x.hoje>1?" tarefas":" tarefa")+" para fechar o dia" : "Bora começar? "+x.hoje+(x.hoje>1?" tarefas":" tarefa")+" para hoje")
+    : x.fz ? "Dia fechado. Mandou bem!" : "Nada marcado para hoje";
+  const chips=[x.atras?'<span class="dc r">'+x.atras+(x.atras>1?" atrasadas":" atrasada")+'</span>':'', x.hoje?'<span class="dc y">'+x.hoje+' para hoje</span>':'', x.depois?'<span class="dc n">'+x.depois+' próximos dias</span>':''].join("");
+  return '<button class="dia'+(x.atras?" late":"")+'" data-act="arq"><span class="dia-r" style="--p:'+pct+'"><b>'+x.fz+'</b><i>'+(meta?'de '+meta:'feitas')+'</i></span><span class="dia-t"><small>SEU DIA</small><b>'+esc(frase)+'</b>'+(chips?'<span class="dcs">'+chips+'</span>':'')+(x.ult?'<span class="dia-u">'+li("check",13,"currentColor",2.6)+'Última: '+esc(x.ult)+'</span>':'')+'</span><span class="dia-go">'+li("archive",18)+'<em>Histórico</em></span></button>';
 }
 function arqLinha(n, nc, hojeTxt){
   if(!n && !nc) return "";
@@ -2059,7 +2066,12 @@ function vPaPum(){
   const eu=S.cfg.equipe.find(e=>e.nome===S.me);
   const trav = travado(eu) ? '<div class="banner warn" style="margin-top:12px">🔒 Você está <b>travado em '+esc(curUnit().nome)+'</b>: não recebe tarefas daqui até a gerência liberar.</div>' : '';
   const ultO=d.feitasOS.filter(o=>!isCancel(o)).sort((a,b)=>new Date(b.concluidoEm)-new Date(a.concluidoEm))[0];
-  let h='<div class="pp-top"><div><div class="hd2-d">'+esc(dateLong())+'</div><h1>'+esc(greeting())+'</h1></div></div>'+trav+installBanner()+diaCard(fz, tot, ultO?ultO.titulo:"");
+  // o que é de hoje, o que está atrasado e o que é para depois
+  let hj=0, at=0, dp=0;
+  tasks.forEach(o=>{ if(o.status==="aguardando"){ dp++; return; } const dd=diffDays(o.prazo); if(dd===null||dd>0) dp++; else if(dd<0) at++; else hj++; });
+  hj+=d.rotPend.length;
+  pvs.forEach(p=>{ const dd=diffDays(prevDue(p)); if(prevMulti(p)&&prevProg(p).n>0) hj++; else if(dd<0) at++; else if(dd===0) hj++; else dp++; });
+  let h='<div class="pp-top"><div><div class="hd2-d">'+esc(dateLong())+'</div><h1>'+esc(greeting())+'</h1></div></div>'+trav+installBanner()+diaCard({fz, hoje:hj, atras:at, depois:dp, ult:ultO?ultO.titulo:""});
   // cores de cada item
   const corRot=r=>{ const k=rotState(r,t).k; return k==="r"?"r":k==="y"?"y":"g"; };
   const corPv=p=>{ if(prevMulti(p)&&prevProg(p).n>0) return "y"; const dd=diffDays(prevDue(p)); return dd<0?"r":dd===0?"y":"g"; };
