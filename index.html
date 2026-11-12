@@ -1170,7 +1170,9 @@ const CATS = [
 const URG = {1:"Urgente", 3:"Normal", 4:"Pode esperar"};
 const DUE = {1:0, 2:1, 3:2, 4:7};
 const STATUS = {triagem:"Para avaliar", aberta:"Aberta", andamento:"Em andamento", aguardando:"Aguardando peça", concluida:"Concluída"};
-const PAPEL = {tecnico:"Técnico", recepcao:"Recepção", supervisor:"Supervisor", gerente:"Gerente", setup:"Configuração"};
+const PAPEL = {tecnico:"Técnico", recepcao:"Recepção", supervisor:"Supervisor", gerente:"Gerente", master:"Master", setup:"Configuração"};
+function chefePapel(x){ return x==="supervisor"||x==="gerente"||x==="master"; }
+function temMaster(){ return S.cfg.equipe.some(e=>e.papel==="master"); }
 const KW_URG = ["urgente","urgencia","imediato","alagando","alagou","sem energia","sem luz","curto","faisca","fumaca","cheiro de queimado","nao abre","nao fecha","travado","incendio","gas","choque","vazando muito"];
 const KW_CALMA = ["quando der","sem pressa","pequeno","estetic","detalhe","arranhado","leve","quando puder"];
 const KW_BLOQ = ["bloque","interdit","fora de venda","nao da pra vender","nao da para vender","sem condic"];
@@ -1240,10 +1242,12 @@ function parseRange(txt){
   });
   return [...out].sort((x,y)=>x-y);
 }
-function myPerson(){ return S.cpf ? S.cfg.equipe.find(e=>digits(e.cpf)===S.cpf) : null; }
-function allowedUnits(){ const p=myPerson(); const lim=p&&Array.isArray(p.unidades)&&p.unidades.length?p.unidades:null;
-  const list=lim?S.cfg.unidades.filter(u=>lim.includes(u.id)):S.cfg.unidades; return list.length?list:S.cfg.unidades.slice(0,1); }
-function fullAccess(){ const p=myPerson(); return S.role==="setup" || !p || !(Array.isArray(p.unidades)&&p.unidades.length); }
+function myPerson(){ return S.cpf ? S.cfg.equipe.find(e=>chaveCpf(e.cpf)===S.cpf) : null; }
+function allowedUnits(){ if(fullAccess()) return S.cfg.unidades.length?S.cfg.unidades:[{id:"u1",nome:"LUV",suites:"1-31"}];
+  const p=myPerson(); const lim=p&&Array.isArray(p.unidades)&&p.unidades.length?p.unidades:null;
+  const list=lim?S.cfg.unidades.filter(u=>lim.includes(u.id)):S.cfg.unidades.slice(0,1); return list.length?list:S.cfg.unidades.slice(0,1); }
+function fullAccess(){ const p=myPerson(); if(S.role==="setup"||S.role==="master") return true; if(!p) return !temMaster();
+  const semUnid=!(Array.isArray(p.unidades)&&p.unidades.length); return semUnid && !temMaster() && chefePapel(p.papel); }
 function curUnit(){ const al=allowedUnits(); return al.find(u=>u.id===S.unit) || al[0]; }
 function unitNames(ids){ return (ids||[]).map(id=>(S.cfg.unidades.find(u=>u.id===id)||{}).nome).filter(Boolean).join(", "); }
 function suites(){ return parseRange(curUnit().suites); }
@@ -1266,7 +1270,7 @@ function normCfg(c){
   if(!Array.isArray(o.areas)) o.areas=clone(DEF_CFG.areas);
   if(!Array.isArray(o.equipe)) o.equipe=clone(DEF_CFG.equipe);
   o.equipe=o.equipe.map((e,i)=> typeof e==="string" ? {id:"e"+(i+1), nome:e, whats:"", cats:[], cpf:"", papel:"tecnico", unidades:[]} :
-    {id:e.id||("e"+(i+1)), nome:e.nome||"Sem nome", whats:e.whats||"", cats:Array.isArray(e.cats)?e.cats:[], cpf:e.cpf||"", papel:["tecnico","recepcao","supervisor","gerente"].includes(e.papel)?e.papel:"tecnico", unidades:Array.isArray(e.unidades)?e.unidades:[], pausas:Array.isArray(e.pausas)?e.pausas:[]});
+    {id:e.id||("e"+(i+1)), nome:e.nome||"Sem nome", whats:e.whats||"", cats:Array.isArray(e.cats)?e.cats:[], cpf:e.cpf||"", papel:["tecnico","recepcao","supervisor","gerente","master"].includes(e.papel)?e.papel:"tecnico", unidades:Array.isArray(e.unidades)?e.unidades:[], pausas:Array.isArray(e.pausas)?e.pausas:[]});
   return o;
 }
 function waLink(num, text){ let d=String(num||"").replace(/\D/g,""); if(d && d.length<=11) d="55"+d; return "https://wa.me/"+d+"?text="+encodeURIComponent(text); }
@@ -1293,13 +1297,13 @@ function loginEmail(cpf){ if(isRec(cpf)) return String(cpf).toLowerCase()+"@"+LO
 function whoAmI(){
   const email=(S.session&&S.session.user&&S.session.user.email)||"", cpf=email.split("@")[0];
   const me=S.cfg.equipe.find(e=>chaveCpf(e.cpf) && chaveCpf(e.cpf)===cpf);
-  const hasChefe=S.cfg.equipe.some(e=>digits(e.cpf) && (e.papel==="supervisor"||e.papel==="gerente"));
+  const hasChefe=S.cfg.equipe.some(e=>digits(e.cpf) && chefePapel(e.papel));
   const prev=S.me;
   S.cpf=cpf; S.me=me?me.nome:""; S.role=me?me.papel:(hasChefe?"tecnico":"setup");
   if(S.session && S.server && S.server.aprovado===false) S.role="pendente";
   if(S.role==="tecnico" && S.me && S.me!==prev) S.f.resp=S.me;
 }
-function isChefe(){ return S.role==="supervisor"||S.role==="gerente"||S.role==="setup"; }
+function isChefe(){ return S.role==="supervisor"||S.role==="gerente"||S.role==="master"||S.role==="setup"; }
 PAPEL.pendente="Aguardando aprovação";
 
 /* ===================== semáforo ===================== */
@@ -2127,6 +2131,12 @@ function pushCard(){
   if(Notification.permission==="denied") return '<div class="pc2 off"><span class="pc2-i">'+li("bell",20)+'</span><span class="pc2-t"><b>Avisos bloqueados</b><span>Libere nas configurações do celular: Chrome › Configurações do site › Notificações.</span></span></div>';
   return '<button class="pc2" data-act="pushOn"><span class="pc2-i">'+li("bell",20)+'</span><span class="pc2-t"><b>Ativar avisos no celular</b><span>Seja avisado na hora quando chegar tarefa nova.</span></span><span class="pc2-b">Ativar</span></button>';
 }
+/* toques: não redesenha a tela no meio de um toque */
+(function(){ const flush=()=>{ setTimeout(()=>{ S.touching=false; if(S.renderPending) render(); },80); };
+  document.addEventListener("pointerdown",()=>{ S.touching=true; clearTimeout(flush._t); flush._t=setTimeout(()=>{ S.touching=false; if(S.renderPending) render(); },1500); },true);
+  document.addEventListener("pointerup",flush,true); document.addEventListener("pointercancel",flush,true);
+  document.addEventListener("focusout",e=>{ if(e.target&&e.target.tagName==="SELECT") setTimeout(()=>{ if(S.renderPending) render(); },50); },true);
+})();
 /* ===================== OS ===================== */
 function nextNum(){ return S.os.filter(inUnit).reduce((m,o)=>Math.max(m,o.numero||0),0)+1; }
 function newOS(extra){
@@ -2176,6 +2186,9 @@ function msg7(p){
 
 /* ===================== render ===================== */
 function render(){
+  const ae0=document.activeElement;
+  if(S.touching || (ae0 && ae0.tagName==="SELECT" && !ae0.closest(".sheet"))){ S.renderPending=true; return; }
+  S.renderPending=false;
   whoAmI();
   const chefe=isChefe();
   if(!chefe && S.tab==="equipe") S.tab="painel";
@@ -2188,9 +2201,10 @@ function render(){
   const slot=document.getElementById("unitSlot"), al=allowedUnits(), lock=!fullAccess();
   if(!al.find(u=>u.id===S.unit)) S.unit=al[0].id;
   slot.parentElement.classList.toggle("single", al.length<2 && !lock);
-  slot.innerHTML = al.length>1
+  const uh = al.length>1
     ? '<label class="sr" for="unitSel">Unidade</label><select id="unitSel" class="unit-sel" data-ch="unit">'+al.map(u=>'<option value="'+esc(u.id)+'"'+(u.id===S.unit?" selected":"")+'>'+(lock?"🔒 ":"")+esc(u.nome)+'</option>').join("")+'</select>'
     : '<span class="unit-name">'+(lock?'🔒 ':'')+esc(curUnit().nome)+'</span>';
+  if(slot.dataset.h!==uh){ slot.innerHTML=uh; slot.dataset.h=uh; }
   ["modeTop","modeSide"].forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.hidden=S.mode==="loading"; el.classList.toggle("on", S.mode==="db"); el.querySelector("span").textContent=(S.mode==="db"&&navigator.onLine?"Ao vivo":"Offline")+(S.q.length?" · "+S.q.length+" para enviar":""); el.classList.toggle("on", S.mode==="db"&&navigator.onLine&&!S.q.length); });
   document.querySelectorAll(".nav button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===S.tab?"page":"false"));
   const fab=document.querySelector(".fab"); const fl=chefe?"Nova OS":"Relatar problema"; if(fab.dataset.k!==String(chefe)){ fab.dataset.k=String(chefe); fab.querySelector(".fab-l").textContent=fl; fab.setAttribute("aria-label",fl);
@@ -2627,7 +2641,7 @@ function vEquipe(){
       '<div class="field"><label for="pw'+i+'">WhatsApp</label><input id="pw'+i+'" class="inp" type="tel" inputmode="tel" placeholder="(47) 99999-9999" value="'+esc(p.whats)+'" data-eq="whats" data-i="'+i+'"></div></div>'+
       (isRec(chaveCpf(p.cpf)) ? '<div class="loginid">📣 <b>Conta do aparelho da recepção</b> · entra pelo botão "Aparelho da recepção" na tela de login'+(chaveCpf(p.cpf).includes(".")?', unidade <b>'+esc(chaveCpf(p.cpf).split(".")[1])+'</b>. Login no Supabase: <code>'+esc(loginEmail(chaveCpf(p.cpf)))+'</code>':'')+'. Coloque acima o WhatsApp do aparelho para receber os avisos de suíte resolvida.</div>' :
       '<div class="grid2"><div class="field"><label for="pc'+i+'">CPF</label><input id="pc'+i+'" class="inp" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="'+esc(maskCpf(p.cpf))+'" data-eq="cpf" data-mask="cpf" data-i="'+i+'"></div>'+
-      '<div class="field"><label for="pp'+i+'">Papel</label><select id="pp'+i+'" class="sel" data-eq="papel" data-i="'+i+'"'+((!full&&(p.papel==="supervisor"||isMe))?" disabled":"")+'>'+(full?["tecnico","recepcao","supervisor","gerente"]:p.papel==="supervisor"?["supervisor"]:["tecnico","recepcao","gerente"]).map(k=>'<option value="'+k+'"'+(p.papel===k?" selected":"")+'>'+PAPEL[k]+'</option>').join("")+'</select></div></div>')+
+      '<div class="field"><label for="pp'+i+'">Papel</label><select id="pp'+i+'" class="sel" data-eq="papel" data-i="'+i+'"'+((!full&&(p.papel==="supervisor"||isMe))?" disabled":"")+'>'+(full?["tecnico","recepcao","supervisor","gerente","master"]:p.papel==="supervisor"?["supervisor"]:["tecnico","recepcao","gerente"]).map(k=>'<option value="'+k+'"'+(p.papel===k?" selected":"")+'>'+PAPEL[k]+'</option>').join("")+'</select></div></div>')+
       (isRec(chaveCpf(p.cpf))?'':digits(p.cpf).length===11?'<div class="loginid">Entra com o CPF. Se a pessoa não criou a conta pelo app, crie no Supabase com: <code>'+esc(loginEmail(p.cpf))+'</code><button class="btn sm" data-act="copyLogin" data-i="'+i+'">Copiar</button></div>':'<div class="hint">Com o CPF preenchido, aparece aqui o login para criar no Supabase.</div>')+
       (multi?'<div class="field"><span class="lbl">'+(full?'Unidades que essa pessoa acessa':'Unidade')+'</span>'+(full?'<div class="pick">'+S.cfg.unidades.map(u=>'<button class="pk" data-act="punit" data-i="'+i+'" data-u="'+esc(u.id)+'" aria-pressed="'+(p.unidades||[]).includes(u.id)+'">🔒 '+esc(u.nome)+'</button>').join("")+'</div><span class="hint">'+((p.unidades||[]).length?'Só vê o que é dessas unidades.':'Sem cadeado: vê todas as unidades.')+'</span>':'<div class="kv"><div style="grid-column:1/-1"><b>🔒 '+esc(unitNames(p.unidades)||"Todas")+'</b></div></div>')+'</div>':'')+
       (multi&&p.papel==='tecnico'?travaHTML(p,i,full):'')+
@@ -2722,7 +2736,7 @@ function ajudHTML(o){
 }
 function respOptions(cur, emptyLabel){
   const op=e=>'<option value="'+esc(e.nome)+'"'+(cur===e.nome?" selected":"")+'>'+esc(e.nome)+'</option>';
-  const tec=S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!travado(e)||e.nome===cur)), ger=S.cfg.equipe.filter(e=>e.papel==="gerente"||e.papel==="supervisor");
+  const tec=S.cfg.equipe.filter(e=>e.papel==="tecnico"&&(!travado(e)||e.nome===cur)), ger=S.cfg.equipe.filter(e=>chefePapel(e.papel));
   return '<option value="">'+(emptyLabel||"Sem responsável")+'</option>'+(tec.length?'<optgroup label="Técnicos">'+tec.map(op).join("")+'</optgroup>':'')+(ger.length?'<optgroup label="Gerência (só se for você mesmo fazer)">'+ger.map(op).join("")+'</optgroup>':''); }
 const TEMPOS=[[15,"15 min"],[30,"30 min"],[60,"1 h"],[120,"2 h"],[240,"4 h"],[480,"1 dia"]];
 const UICON={1:"",3:"",4:""};
@@ -3221,9 +3235,9 @@ document.addEventListener("change", e=>{
       if(old!==p.nome){ S.os.filter(o=>o.responsavel===old).forEach(o=>{ const c=clone(o); c.responsavel=p.nome; write("os",c); }); S.prev.filter(r=>r.responsavel===old).forEach(r=>{ const c=clone(r); c.responsavel=p.nome; write("preventivas",c); }); } }
     if(el.dataset.eq==="whats") p.whats=el.value.trim();
     if(el.dataset.eq==="cpf"){ const d=digits(el.value); if(d && d.length!==11){ toast("O CPF precisa ter 11 números"); return; } if(d && S.cfg.equipe.some((x,j)=>j!==+el.dataset.i && digits(x.cpf)===d)){ toast("Esse CPF já está em outra pessoa"); return; } p.cpf=d;
-      const temChefe=S.cfg.equipe.some(x=>x!==p && digits(x.cpf) && (x.papel==="supervisor"||x.papel==="gerente"));
+      const temChefe=S.cfg.equipe.some(x=>x!==p && digits(x.cpf) && chefePapel(x.papel));
       if(!temChefe && d && d===S.cpf && p.papel==="tecnico"){ p.papel="supervisor"; toast("Você ficou como Supervisor", true); } }
-    if(el.dataset.eq==="papel"){ const chefes=S.cfg.equipe.filter(x=>digits(x.cpf)&&(x.papel==="supervisor"||x.papel==="gerente")); if(p.papel!=="tecnico" && el.value==="tecnico" && chefes.length===1 && chefes[0]===p){ toast("Precisa ficar pelo menos um supervisor ou gerente"); el.value=p.papel; return; } p.papel=el.value; }
+    if(el.dataset.eq==="papel"){ const chefes=S.cfg.equipe.filter(x=>digits(x.cpf)&&chefePapel(x.papel)); if(p.papel!=="tecnico" && el.value==="tecnico" && chefes.length===1 && chefes[0]===p){ toast("Precisa ficar pelo menos um supervisor ou gerente"); el.value=p.papel; return; } p.papel=el.value; }
     saveCfg(); toast("Salvo", true); return;
   }
   if(!F) return;
