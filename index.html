@@ -964,6 +964,13 @@ button:focus:not(:focus-visible){outline:none}
 .dc{font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap}
 .dc.r{background:#E5484D;color:#fff} .dc.y{background:rgba(255,214,102,.22);color:#FFE29A} .dc.n{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8)}
 .dia.late .dia-r{background:radial-gradient(closest-side,var(--hero) 78%,transparent 80% 100%),conic-gradient(#3DD68C calc(var(--p)*1%),rgba(229,72,77,.45) 0)}
+.pc2{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:14px;border-radius:18px;background:var(--brass-soft);border:1px solid color-mix(in srgb,var(--brass) 30%,transparent)}
+.pc2.off{cursor:default;background:var(--surface-2);border-color:var(--line)}
+.pc2-i{width:42px;height:42px;border-radius:12px;background:var(--brass);color:#fff;display:grid;place-items:center;flex:none;animation:bel 2.4s ease-in-out infinite}
+.pc2.off .pc2-i{background:var(--ink-3);animation:none}
+@keyframes bel{0%,80%,100%{transform:rotate(0)}85%{transform:rotate(-12deg)}90%{transform:rotate(10deg)}95%{transform:rotate(-6deg)}}
+.pc2-t{flex:1;display:grid;gap:2px} .pc2-t b{font-size:15px;font-weight:800} .pc2-t span{font-size:12.5px;color:var(--ink-2)}
+.pc2-b{background:var(--brass);color:#fff;font-weight:800;font-size:13px;padding:9px 14px;border-radius:11px}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1460,6 +1467,7 @@ function showLogin(msg){ ready();
 }
 function hideLogin(){ document.getElementById("login").hidden=true; }
 async function start(){
+  setTimeout(()=>{ pushInit(); pushLogin(); }, 1200);
   S.undo=null; const tt=document.getElementById("toast"); if(tt) tt.classList.remove("on","act");
   if(!S.hasCache) S.mode="loading";
   hideLogin(); setTimeout(()=>{ let seen=false; try{ seen=localStorage.getItem("luvman.guia")==="1"; }catch(e){} if(!seen && (S.role==="tecnico"||S.role==="recepcao") && !S.form) openSheet({type:"guia", i:0}); }, 1800); S.tab="painel"; S.f={status:"abertas", resp:"", sem:"", urg:0}; S.me=""; render();
@@ -1770,7 +1778,7 @@ function vRecepcao(){
   const abertos=meus.filter(isOpen).sort((a,b)=>(a.prioridade-b.prioridade)||new Date(b.criadoEm)-new Date(a.criadoEm));
   const hoje=meus.filter(o=>!isOpen(o)&&o.concluidoEm&&localDate(o.concluidoEm)===t).sort((a,b)=>new Date(b.concluidoEm)-new Date(a.concluidoEm));
   const list=suites(), sts=list.map(n=>localState("S:"+n)), fora=sts.filter(s=>s.k==="bloq").length, work=list.filter(n=>ativAt("S:"+n).length).length;
-  let h='<div class="sp-h"><h1>Olá, '+esc(first(S.me)||"Recepção")+'!</h1><p class="sp-c">Recepção · '+esc(curUnit().nome)+'</p></div>'+installBanner();
+  let h='<div class="sp-h"><h1>Olá, '+esc(first(S.me)||"Recepção")+'!</h1><p class="sp-c">Recepção · '+esc(curUnit().nome)+'</p></div>'+installBanner()+pushCard();
   h+='<button class="cta" data-act="new"><span class="cta-i">📣</span><span class="cta-t"><b>Chamar a manutenção</b><small>Algo errado numa suíte? Avise em 3 toques.</small></span><span class="cta-a">›</span></button>';
   h+='<div class="rc-stats"><button data-act="tab" data-tab="suites"><b>'+(list.length-fora)+'</b><span>✅ À venda</span></button><button data-act="tab" data-tab="suites"><b>'+work+'</b><span>🔧 Em manutenção</span></button><button data-act="tab" data-tab="suites" class="'+(fora?"bad":"")+'"><b>'+fora+'</b><span>🚫 Fora de venda</span></button></div>';
   h+='<div class="tt-sub">Chamados em aberto</div>';
@@ -1862,6 +1870,7 @@ const LI={
  play:'<path d="M8 5v14l11-7z"/>',
  undo:'<path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-2"/>',
  cal:'<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+ bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',
  archive:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
  spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>'
 };
@@ -2071,7 +2080,7 @@ function vPaPum(){
   tasks.forEach(o=>{ if(o.status==="aguardando"){ dp++; return; } const dd=diffDays(o.prazo); if(dd===null||dd>0) dp++; else if(dd<0) at++; else hj++; });
   hj+=d.rotPend.length;
   pvs.forEach(p=>{ const dd=diffDays(prevDue(p)); if(prevMulti(p)&&prevProg(p).n>0) hj++; else if(dd<0) at++; else if(dd===0) hj++; else dp++; });
-  let h='<div class="pp-top"><div><div class="hd2-d">'+esc(dateLong())+'</div><h1>'+esc(greeting())+'</h1></div></div>'+trav+installBanner()+diaCard({fz, hoje:hj, atras:at, depois:dp, ult:ultO?ultO.titulo:""});
+  let h='<div class="pp-top"><div><div class="hd2-d">'+esc(dateLong())+'</div><h1>'+esc(greeting())+'</h1></div></div>'+trav+installBanner()+pushCard()+diaCard({fz, hoje:hj, atras:at, depois:dp, ult:ultO?ultO.titulo:""});
   // cores de cada item
   const corRot=r=>{ const k=rotState(r,t).k; return k==="r"?"r":k==="y"?"y":"g"; };
   const corPv=p=>{ if(prevMulti(p)&&prevProg(p).n>0) return "y"; const dd=diffDays(prevDue(p)); return dd<0?"r":dd===0?"y":"g"; };
@@ -2096,6 +2105,27 @@ function vPaPum(){
   const minhasRot=rotinas().filter(r=>rotMinha(r)).length, minhasPv=preventivas().filter(p=>p.responsavel===S.me||p.criadoPor===S.me||!p.responsavel).length;
   h+='<div class="atl"><button data-act="goRot" data-v="dia"><span class="atl-i">'+li("cal",20)+'</span><b>Minha semana</b><span>'+minhasRot+(minhasRot===1?" rotina":" rotinas")+'</span></button><button data-act="goRot" data-v="prev"><span class="atl-i">'+li("clock",20)+'</span><b>Preventivas</b><span>'+minhasPv+(minhasPv===1?" cadastrada":" cadastradas")+'</span></button></div>';
   return h;
+}
+/* ===================== NOTIFICAÇÕES NO CELULAR (OneSignal) ===================== */
+const PUSH={ok:false, on:false, sup:("Notification" in window)&&("serviceWorker" in navigator)};
+function pushInit(){
+  const id=(window.LUV_CONFIG||{}).ONESIGNAL_APP_ID; if(!id||!PUSH.sup||pushInit.done) return; pushInit.done=true;
+  window.OneSignalDeferred=window.OneSignalDeferred||[];
+  const sc=document.createElement("script"); sc.src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"; sc.defer=true; document.head.appendChild(sc);
+  OneSignalDeferred.push(async function(OS){
+    try{ await OS.init({appId:id, safari_web_id:"web.onesignal.auto.11512f5d-61af-48e1-99c6-cc09fe5cc2c2", serviceWorkerPath:"sw.js", serviceWorkerParam:{scope:"/"}, allowLocalhostAsSecureOrigin:true});
+      PUSH.ok=true; PUSH.on=!!OS.Notifications.permission && !!(OS.User.PushSubscription.optedIn);
+      OS.Notifications.addEventListener("permissionChange",()=>{ PUSH.on=!!OS.Notifications.permission; render(); });
+      if(S.cpf) await OS.login(S.cpf);
+      render(); }catch(e){ console.warn("push",e); }
+  });
+}
+function pushLogin(){ if(!window.OneSignalDeferred||!S.cpf) return; OneSignalDeferred.push(async OS=>{ try{ await OS.login(S.cpf); }catch(e){} }); }
+function pushLogout(){ if(!window.OneSignalDeferred) return; OneSignalDeferred.push(async OS=>{ try{ await OS.logout(); }catch(e){} }); }
+function pushCard(){
+  if(!PUSH.ok||PUSH.on||!PUSH.sup) return "";
+  if(Notification.permission==="denied") return '<div class="pc2 off"><span class="pc2-i">'+li("bell",20)+'</span><span class="pc2-t"><b>Avisos bloqueados</b><span>Libere nas configurações do celular: Chrome › Configurações do site › Notificações.</span></span></div>';
+  return '<button class="pc2" data-act="pushOn"><span class="pc2-i">'+li("bell",20)+'</span><span class="pc2-t"><b>Ativar avisos no celular</b><span>Seja avisado na hora quando chegar tarefa nova.</span></span><span class="pc2-b">Ativar</span></button>';
 }
 /* ===================== OS ===================== */
 function nextNum(){ return S.os.filter(inUnit).reduce((m,o)=>Math.max(m,o.numero||0),0)+1; }
@@ -2885,6 +2915,7 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  pushOn(){ if(!window.OneSignalDeferred) return; OneSignalDeferred.push(async OS=>{ try{ await OS.Notifications.requestPermission(); await OS.User.PushSubscription.optIn(); if(S.cpf) await OS.login(S.cpf); PUSH.on=!!OS.Notifications.permission; render(); if(PUSH.on) toast("🔔 Avisos ativados!", true); }catch(e){ toast("Não deu para ativar agora"); } }); },
   goRot(el){ S.rot=S.rot||{}; S.rot.view=el.dataset.v; S.tab="prev"; haptic(); render(); window.scrollTo({top:0}); },
   trava(el){ const p=S.cfg.equipe[+el.dataset.i], u=el.dataset.u; if(!p) return; p.pausas=(p.pausas||[]); const on=!p.pausas.includes(u); p.pausas=on?p.pausas.concat([u]):p.pausas.filter(x=>x!==u);
     saveCfg(); haptic(); toast((on?"🔒 "+first(p.nome)+" travado em ":"✅ "+first(p.nome)+" liberado em ")+unitNames([u]), true); },
@@ -3034,7 +3065,7 @@ const A = {
     haptic(); toast(papelNovo==="recepcao"?first(c.nome)+" aprovada na Recepção.":first(c.nome)+" aprovado como técnico. Marque os setores dele.", true); },
   async recusar(el){ const c=S.cads.find(x=>x.id===el.dataset.id); if(!c||!await ask("Recusar o acesso de "+(c.nome||"essa pessoa")+"?","Recusar",true)) return;
     S.cads=S.cads.filter(x=>x.id!==c.id); render(); sb.from("man_docs").delete().eq("colecao","cadastro").eq("id",c.id).then(({error})=>{ if(error) netErr(error); }); toast("Pedido recusado"); },
-  async logout(){ if(!await ask("Sair da conta neste aparelho?","Sair",true)) return; closeSheet(); try{ await sb?.auth.signOut(); }catch(e){} S.session=null; showLogin(); },
+  async logout(){ pushLogout(); if(!await ask("Sair da conta neste aparelho?","Sair",true)) return; closeSheet(); try{ await sb?.auth.signOut(); }catch(e){} S.session=null; showLogin(); },
   async changePass(){ const a=document.getElementById("np1").value, b=document.getElementById("np2").value;
     if(a.length<6){ toast("A senha precisa ter pelo menos 6 caracteres"); return; } if(a!==b){ toast("As duas senhas não são iguais"); return; }
     const {error}=await sb.auth.updateUser({password:a}); if(error){ toast(/different|same/i.test(error.message)?"Use uma senha diferente da atual":"Não foi possível trocar agora"); return; }
