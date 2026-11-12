@@ -971,6 +971,14 @@ button:focus:not(:focus-visible){outline:none}
 @keyframes bel{0%,80%,100%{transform:rotate(0)}85%{transform:rotate(-12deg)}90%{transform:rotate(10deg)}95%{transform:rotate(-6deg)}}
 .pc2-t{flex:1;display:grid;gap:2px} .pc2-t b{font-size:15px;font-weight:800} .pc2-t span{font-size:12.5px;color:var(--ink-2)}
 .pc2-b{background:var(--brass);color:#fff;font-weight:800;font-size:13px;padding:9px 14px;border-radius:11px}
+.iar{border:1px solid color-mix(in srgb,var(--brass) 30%,var(--line));background:linear-gradient(180deg,var(--brass-soft),var(--surface));border-radius:16px;padding:12px 14px;display:grid;gap:6px;margin-top:-4px}
+.iar-h{display:flex;align-items:center;gap:6px;color:var(--brass);font-size:13px} .iar-h b{font-weight:800} .iar-h span{margin-left:auto;color:var(--ink-3);font-size:11.5px}
+.iar-t{font-size:15.5px;font-weight:800;color:var(--ink)}
+.iar-d{font-size:13.5px;color:var(--ink-2);line-height:1.4}
+.iar-c{display:flex;flex-wrap:wrap;gap:6px}
+.iar-c span{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--ink-2)}
+.iar-c .u-r{background:var(--r-soft);color:var(--r);border-color:transparent} .iar-c .u-y{background:var(--y-soft);color:var(--y);border-color:transparent} .iar-c .u-g{background:var(--g-soft);color:var(--g);border-color:transparent}
+.iar-m{font-size:12.5px;color:var(--ink-3);font-style:italic}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1590,6 +1598,8 @@ async function iaOrganize(F){
     const pr=[1,3,4].includes(+r.prioridade)?+r.prioridade:null;
     if(pr){ o.iaSugestao={prioridade:pr, motivo:String(r.motivo||"").slice(0,200), foraDeVenda:!!r.bloqueiaSuite};
       if(isChefe() && !T.prioridade){ setUrg(F,pr); if(o.local?.startsWith("S:")) o.bloqueiaSuite=!!r.bloqueiaSuite; } }
+    if(!(F.raw||"").trim()){ F.raw=[r.titulo, r.descricao].filter(Boolean).join(" — "); F.rawIA=true; }
+    F.aiRes={titulo:o.titulo, descricao:o.descricao, cat:o.categoria, pr, motivo:String(r.motivo||""), etapas:(o.checklist||[]).length, local:o.local};
     F.aiDone=true; F.aiNote="✦ Organizado pela IA. Confira antes de enviar.";
   }catch(e){ if(S.form===F) F.aiNote="A IA não respondeu agora. Pode enviar assim mesmo."; }
   F.aiBusy=false; if(S.form===F) refreshSheet();
@@ -1616,7 +1626,7 @@ async function iaDepois(id, blobs, texto){
 }
 function applyRaw(F){
   const p=parseText(F.raw||""); F.parsed=p; const o=F.o, T=F.touched||{};
-  if(!T.titulo) o.titulo=titleFrom(F.raw);
+  if(!T.titulo && !(F.aiRes && F.rawIA)) o.titulo=titleFrom(F.raw);
   if(p.local && !T.local) o.local=p.local;
   if(p.categoria && !T.categoria) setCat(F, p.categoria);
   if(isChefe()){ if(!T.prioridade) setUrg(F, p.prioridade||3); if(!T.bloqueiaSuite) o.bloqueiaSuite=!!p.bloqueiaSuite; }
@@ -2789,8 +2799,13 @@ function smartBox(F, ph){
     '<div class="smart-f"><div class="got">'+(F.rec?'<span class="rec-l"><i></i>Ouvindo… fale o problema e onde é</span>':got.length?'Entendi: '+got.join(""):'<span class="muted">Escreva ou toque no microfone</span>')+'</div>'+
     '<div class="smart-a">'+(CFG.IA_WEBHOOK_URL?'<button class="btn sm brass" data-act="ai"'+(F.aiBusy?" disabled":"")+'>'+(F.aiBusy?'<span class="spin"></span> IA':'✦ IA')+'</button>':'')+
     '<button class="mic'+(F.rec?" on":"")+'" data-act="voice" aria-label="'+(F.rec?"Parar de ouvir":"Falar")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button></div></div></div>'+
-    (F.aiNote?'<div class="muted" style="font-size:13px;margin-top:-6px">'+esc(F.aiNote)+'</div>':'');
+    (F.aiRes ? iaResumo(F) : F.aiNote?'<div class="muted" style="font-size:13px;margin-top:-6px">'+esc(F.aiNote)+'</div>':'');
 }
+function iaResumo(F){ const r=F.aiRes, U={1:["Urgente","r"],3:["Normal","y"],4:["Pode esperar","g"]}[r.pr]||null;
+  return '<div class="iar"><div class="iar-h">'+li("spark",16)+'<b>A IA entendeu assim</b><span>confira antes de salvar</span></div>'+
+    '<div class="iar-t">'+esc(r.titulo||"")+'</div>'+(r.descricao?'<div class="iar-d">'+esc(r.descricao)+'</div>':'')+
+    '<div class="iar-c">'+(r.local?'<span>'+li("pin",13)+esc(localLabel(r.local))+'</span>':'')+'<span>'+catIcon(r.cat,13)+esc(cat(r.cat).n.split(" e ")[0])+'</span>'+(U?'<span class="u-'+U[1]+'">'+U[0]+'</span>':'')+(r.etapas?'<span>'+li("check",13)+r.etapas+' etapas</span>':'')+'</div>'+
+    (r.motivo?'<div class="iar-m">'+esc(r.motivo)+'</div>':'')+'</div>'; }
 function kv(label,val){ return '<div><span>'+esc(label)+'</span><b>'+val+'</b></div>'; }
 function sheetOS(F){
   const o=F.o, isNew=F.mode==="new", chefe=isChefe(), sm=sem(o), tri=o.status==="triagem";
