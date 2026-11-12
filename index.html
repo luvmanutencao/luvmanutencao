@@ -1594,6 +1594,26 @@ async function iaOrganize(F){
   }catch(e){ if(S.form===F) F.aiNote="A IA não respondeu agora. Pode enviar assim mesmo."; }
   F.aiBusy=false; if(S.form===F) refreshSheet();
 }
+// IA em segundo plano: analisa a foto depois de enviada e completa o relato para a gerência
+async function iaDepois(id, blobs, texto){
+  if(!CFG.IA_WEBHOOK_URL || !blobs.length) return;
+  try{
+    const imgs=[]; for(const b of blobs.slice(0,3)) imgs.push(await b64(await shrink(b,900,.7)));
+    const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),35000);
+    const res=await fetch(CFG.IA_WEBHOOK_URL,{method:"POST", signal:ctl.signal, headers:{"Content-Type":"application/json","Authorization":"Bearer "+(S.session?.access_token||"")},
+      body:JSON.stringify({texto:texto||"", imagens:imgs, locais:locs(), categorias:CATS.map(c=>({id:c.id, nome:c.n}))})});
+    clearTimeout(t); if(!res.ok) return;
+    const r=await res.json(); const o0=S.os.find(x=>x.id===id); if(!o0||o0.status!=="triagem") return;
+    const o=clone(o0);
+    if(r.titulo && /^Problema na /.test(o.titulo)) o.titulo=String(r.titulo).slice(0,90);
+    if(r.descricao && !o.descricao) o.descricao=String(r.descricao).slice(0,600);
+    if(CATS.some(c=>c.id===r.categoria) && (o.categoria==="outros"||!o.categoria)) o.categoria=r.categoria;
+    if(Array.isArray(r.checklist) && !(o.checklist||[]).length) o.checklist=r.checklist.slice(0,5).map(x=>({t:String(x).slice(0,120), ok:false}));
+    const pr=[1,3,4].includes(+r.prioridade)?+r.prioridade:null;
+    if(pr) o.iaSugestao={prioridade:pr, motivo:String(r.motivo||"").slice(0,200), foraDeVenda:!!r.bloqueiaSuite};
+    hist(o,"✦ Analisado pela IA"); write("os",o);
+  }catch(e){}
+}
 function applyRaw(F){
   const p=parseText(F.raw||""); F.parsed=p; const o=F.o, T=F.touched||{};
   if(!T.titulo) o.titulo=titleFrom(F.raw);
@@ -2949,14 +2969,16 @@ const A = {
   ftCat(el){ const F=S.form; F.o.categoria=el.dataset.v; F.autoCat=false; F.catTouched=true; haptic(); refreshSheet(); },
   rotHora(el){ S.form.o.hora=el.dataset.v; refreshSheet(); },
   prevFreq(el){ S.form.o.freq=+el.dataset.v; haptic(); refreshSheet(); },
-  async foSend(el){ const F=S.form; if(!F||F.sending) return; F.o.local=el.dataset.v; F.sending=true; refreshSheet(); haptic();
+  async foSend(el){ const F=S.form; if(!F||F.sending) return; F.o.local=el.dataset.v; F.sending=true; F.pend0=(F.pend||[]).map(p=>p.blob); refreshSheet(); haptic();
     const o=F.o; const raw=(F.raw||"").trim(); const pp=raw?parseText(raw):{};
     if(pp.categoria) o.categoria=pp.categoria;
     o.titulo = raw ? titleFrom(raw) : "Problema na "+localLabel(o.local); if(raw) o.descricao=raw;
     try{ for(const p of (F.pend||[])){ const f=await uploadFoto(p.blob); S.urls[f.path]=p.url; o.fotos.push(f); } F.pend=[]; }
     catch(e){ F.sending=false; refreshSheet(); toast("Sem internet para enviar a foto. Tente de novo."); return; }
     o.numero=nextNum(); o.criadoEm=nowISO(); delete o._prazoAuto; o.status="triagem"; o.relatadoPor=S.me||""; o.responsavel=""; o.prazo="";
-    hist(o,"Relatado com foto"); S.form=null; write("os",o); closeSheet(); ding(1); toast("Enviado para a gerência ✓", true); },
+    const blobsIA=(F.pend0||[]).slice();
+    hist(o,"Relatado com foto"); S.form=null; write("os",o); closeSheet(); ding(1); toast("Enviado para a gerência ✓", true);
+    iaDepois(o.id, blobsIA, raw); },
   pvNext(el){ const p=S.prev.find(x=>x.id===el.dataset.id); if(!p) return; const nx=pvProxima(p); if(!nx) return;
     S.form={type:"pvitens", id:p.id, sel:{[nx]:true}}; A.pvSave(); },
   lqPick(el){ const F=S.form; F.local=el.dataset.v; F.lq=""; haptic(); refreshSheet(); },
