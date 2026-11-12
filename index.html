@@ -925,6 +925,41 @@ div.sc-b{cursor:default}
 .pk.trv{background:var(--g-soft);border-color:transparent;color:var(--g);font-weight:700}
 .pk.trv.off{background:var(--r-soft);color:var(--r)}
 .banner.warn{background:var(--y-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--y) 35%,transparent);border-radius:14px;padding:12px 14px;font-size:13.5px}
+/* toque de app nativo */
+*{-webkit-tap-highlight-color:transparent}
+button,.r2,.pp-h,.ac-h,.sc-b,[role="button"],.nav,.tg,.cp,label.pk{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+button:focus:not(:focus-visible){outline:none}
+.ac-h{transition:background-color .15s} .ac-h:active{background:var(--surface-2)}
+.pp-h:active,.r2:active{opacity:.85}
+.sk{background:linear-gradient(100deg,var(--surface-2) 30%,color-mix(in srgb,var(--surface-2) 40%,var(--surface)) 50%,var(--surface-2) 70%);background-size:300% 100%;animation:skm 1.3s ease-in-out infinite;border-radius:8px}
+@keyframes skm{from{background-position:100% 0}to{background-position:0 0}}
+.skac{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+/* Seu dia */
+.dia{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:14px;width:100%;margin-top:14px;padding:16px;border-radius:20px;background:linear-gradient(135deg,var(--hero),color-mix(in srgb,var(--hero) 78%,var(--brass)));color:var(--hero-ink);box-shadow:0 14px 30px -18px color-mix(in srgb,var(--hero) 80%,transparent);position:relative;overflow:hidden}
+.dia::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.10),transparent 70%)}
+.dia:active{transform:scale(.985)}
+.dia-r{--p:0;width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-content:center;text-align:center;background:radial-gradient(closest-side,var(--hero) 78%,transparent 80% 100%),conic-gradient(#3DD68C calc(var(--p)*1%),rgba(255,255,255,.14) 0)}
+.dia-r b{font-size:20px;font-weight:800;line-height:1}
+.dia-r i{font-style:normal;font-size:10.5px;opacity:.75;margin-top:2px}
+.dia-t{flex:1;min-width:0;display:grid;gap:3px}
+.dia-t small{font-size:10.5px;font-weight:800;letter-spacing:.12em;opacity:.7}
+.dia-t b{font-size:15px;font-weight:700;line-height:1.3}
+.dia-u{display:flex;align-items:center;gap:5px;font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dia-go{display:grid;justify-items:center;gap:3px;flex:none;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.1)}
+.dia-go em{font-style:normal;font-size:11px;font-weight:700}
+/* atalhos */
+.atl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.atl button{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:2px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.atl button:active{transform:scale(.97);background:var(--surface-2)}
+.atl-i{width:38px;height:38px;border-radius:11px;background:var(--brass-soft);color:var(--brass);display:grid;place-items:center;margin-bottom:8px}
+.atl b{font-size:14.5px;font-weight:800;color:var(--ink)}
+.atl button>span:last-child{font-size:12.5px;color:var(--ink-3)}
+/* histórico (recepção) */
+.arq2{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.arq2:active{background:var(--surface-2)}
+.arq2-i{width:42px;height:42px;border-radius:12px;background:var(--hero);color:var(--hero-ink);display:grid;place-items:center;flex:none}
+.arq2-t{flex:1;display:grid;gap:1px} .arq2-t b{font-size:15px;font-weight:800} .arq2-t span{font-size:12.5px;color:var(--ink-3)}
+.arq2-c{color:var(--ink-3);display:grid}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1767,9 +1802,14 @@ function arqBase(){
     S.role==="tecnico" ? ehDe(o,S.me) :
     S.role==="recepcao" ? o.origem==="recepcao" : true);
 }
+function diaCard(fz, tot, ult){
+  const pct=tot?Math.round(fz/tot*100):0, falta=Math.max(0,tot-fz);
+  const frase = !tot ? "Nada para hoje por enquanto" : falta===0 ? "Tudo feito hoje. Mandou bem!" : fz===0 ? "Bora começar? "+falta+(falta>1?" tarefas":" tarefa")+" esperando" : "Faltam "+falta+(falta>1?" tarefas":" tarefa")+" para fechar o dia";
+  return '<button class="dia" data-act="arq"><span class="dia-r" style="--p:'+pct+'"><b>'+fz+'</b><i>de '+tot+'</i></span><span class="dia-t"><small>SEU DIA</small><b>'+esc(frase)+'</b>'+(ult?'<span class="dia-u">'+li("check",13,"currentColor",2.6)+'Última: '+esc(ult)+'</span>':'')+'</span><span class="dia-go">'+li("archive",18)+'<em>Histórico</em></span></button>';
+}
 function arqLinha(n, nc, hojeTxt){
   if(!n && !nc) return "";
-  return '<button class="arq-l" data-act="arq"><span>📁</span><span class="arq-t">'+(n?'<b>✓ '+n+'</b> '+(hojeTxt||(n>1?"feitos hoje":"feito hoje")):'')+(n&&nc?' · ':'')+(nc?'<b class="c">'+nc+'</b> cancelado'+(nc>1?'s':''):'')+'</span><span class="arq-v">Ver histórico ›</span></button>';
+  return '<button class="arq2" data-act="arq"><span class="arq2-i">'+li("archive",20)+'</span><span class="arq2-t"><b>Histórico</b><span>'+(n?n+' '+(hojeTxt||(n>1?"feitos hoje":"feito hoje")):'')+(n&&nc?' · ':'')+(nc?nc+' cancelado'+(nc>1?'s':''):'')+'</span></span><span class="arq2-c">'+li("chev",18)+'</span></button>';
 }
 function sheetArq(F){
   const ym=F.ym||todayStr().slice(0,7), [y,m]=ym.split("-").map(Number), cur=ym===todayStr().slice(0,7), view=F.v||"ok";
@@ -1813,7 +1853,10 @@ const LI={
  list:'<path d="M9 6h11M9 12h11M9 18h11M5 6h.01M5 12h.01M5 18h.01"/>',
  mega:'<path d="M3 10v4a1 1 0 0 0 1 1h3l5 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16 8.5a5 5 0 0 1 0 7"/>',
  play:'<path d="M8 5v14l11-7z"/>',
- undo:'<path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-2"/>'
+ undo:'<path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-2"/>',
+ cal:'<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+ archive:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
+ spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>'
 };
 function li(n,s,c,w){ return '<svg width="'+(s||20)+'" height="'+(s||20)+'" viewBox="0 0 24 24" fill="'+(n==="play"?(c||"currentColor"):"none")+'" stroke="'+(c||"currentColor")+'" stroke-width="'+(w||1.9)+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(LI[n]||LI.wrench)+'</svg>'; }
 const CAT_LI={portoes:"gate",ar:"snow",hidro:"bath",hidraulica:"drop",eletrica:"bolt",eletronicos:"tv",mobiliario:"door",acabamento:"brush",equipamentos:"fridge",outros:"wrench"};
@@ -2015,7 +2058,8 @@ function vPaPum(){
   const fz=d.feitasOS.length+d.rotFeitas.length, tot=demCards.length+rot.length+pvs.length+fz;
   const eu=S.cfg.equipe.find(e=>e.nome===S.me);
   const trav = travado(eu) ? '<div class="banner warn" style="margin-top:12px">🔒 Você está <b>travado em '+esc(curUnit().nome)+'</b>: não recebe tarefas daqui até a gerência liberar.</div>' : '';
-  let h='<div class="pp-top"><h1>'+esc(greeting())+'</h1><b>'+fz+'<i>/'+tot+' feitas</i></b></div><div class="pb2"><i style="width:'+(tot?Math.round(fz/tot*100):0)+'%"></i></div>'+trav+installBanner();
+  const ultO=d.feitasOS.filter(o=>!isCancel(o)).sort((a,b)=>new Date(b.concluidoEm)-new Date(a.concluidoEm))[0];
+  let h='<div class="pp-top"><div><div class="hd2-d">'+esc(dateLong())+'</div><h1>'+esc(greeting())+'</h1></div></div>'+trav+installBanner()+diaCard(fz, tot, ultO?ultO.titulo:"");
   // cores de cada item
   const corRot=r=>{ const k=rotState(r,t).k; return k==="r"?"r":k==="y"?"y":"g"; };
   const corPv=p=>{ if(prevMulti(p)&&prevProg(p).n>0) return "y"; const dd=diffDays(prevDue(p)); return dd<0?"r":dd===0?"y":"g"; };
@@ -2037,9 +2081,8 @@ function vPaPum(){
   h+=sec("rot","list","Rotina de hoje",rotItens,NOMEROT,d.rotFeitas.length?"Rotina de hoje feita":"Sem rotina para hoje");
   if(todasPv.length) h+=sec("pv","clock","Preventivas",pvItens,NOMEPV,"Nenhuma para agora");
   h+='</div>';
-  const fe=d.feitasOS.filter(o=>!isCancel(o)).length+d.rotFeitas.length;
-  h+=arqLinha(fe,0,fe>1?"feitas hoje":"feita hoje");
-  h+='<div style="text-align:center;margin-top:10px"><button class="btn sm ghost" data-act="tab" data-tab="prev">Minhas rotinas e preventivas</button></div>';
+  const minhasRot=rotinas().filter(r=>rotMinha(r)).length, minhasPv=preventivas().filter(p=>p.responsavel===S.me||p.criadoPor===S.me||!p.responsavel).length;
+  h+='<div class="atl"><button data-act="goRot" data-v="dia"><span class="atl-i">'+li("cal",20)+'</span><b>Minha semana</b><span>'+minhasRot+(minhasRot===1?" rotina":" rotinas")+'</span></button><button data-act="goRot" data-v="prev"><span class="atl-i">'+li("clock",20)+'</span><b>Preventivas</b><span>'+minhasPv+(minhasPv===1?" cadastrada":" cadastradas")+'</span></button></div>';
   return h;
 }
 /* ===================== OS ===================== */
@@ -2094,8 +2137,9 @@ function render(){
   whoAmI();
   const chefe=isChefe();
   if(!chefe && S.tab==="equipe") S.tab="painel";
-  const eqBtn=document.querySelector('.nav [data-tab="equipe"]'); if(eqBtn) eqBtn.hidden=!chefe;
-  const ajBtn=document.querySelector('.nav [data-tab="ajustes"]'); if(ajBtn) ajBtn.lastChild.nodeValue = chefe ? "Ajustes" : "Conta";
+  const chefeV = chefe && roleView()!=="tecnico" && roleView()!=="recepcao";
+  const eqBtn=document.querySelector('.nav [data-tab="equipe"]'); if(eqBtn) eqBtn.hidden=!chefeV;
+  const ajBtn=document.querySelector('.nav [data-tab="ajustes"]'); if(ajBtn) ajBtn.lastChild.nodeValue = chefeV ? "Ajustes" : "Conta";
   const av=document.getElementById("avatar"); if(av){ const n=S.me||S.session?.user?.user_metadata?.nome||"?"; av.hidden=!S.session; av.textContent=n.split(" ").filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"?"; }
   const mb=document.getElementById("meBtn"); if(mb){ mb.hidden=!S.session; document.getElementById("meAv").textContent=(S.me||"?").split(" ").filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase(); document.getElementById("meName").textContent=S.me||"Minha conta"; document.getElementById("meRole").textContent=PAPEL[S.role]||""; }
   const bt=document.querySelector(".brand-t b"); if(bt) bt.textContent = S.me ? S.me+" · "+PAPEL[S.role] : (S.session?PAPEL[S.role]:"");
@@ -2113,7 +2157,7 @@ function render(){
   const v=document.getElementById("view");
   const pend=S.role==="pendente";
   document.querySelector(".nav").hidden=pend; if(pend) fab.hidden=true;
-  const tec=S.role==="tecnico", rec=S.role==="recepcao";
+  const rv=roleView(), tec=rv==="tecnico", rec=rv==="recepcao";
   const nc=document.querySelector(".nav-c"); if(nc){ nc.hidden=!(tec||rec); const k=rec?"rec":"tec"; if(nc.dataset.k!==k){ nc.dataset.k=k; nc.querySelector("span").innerHTML = rec ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4a1 1 0 0 0 1 1h3l5 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.4-2h5l1.4 2h1.6A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>'; } }
   document.querySelector(".nav").classList.toggle("tec", tec||rec);
   const pb=document.querySelector('.nav [data-tab="painel"]'); if(pb) pb.lastChild.nodeValue = tec ? "Tarefas" : rec ? "Chamados" : "Fila";
@@ -2123,6 +2167,7 @@ function render(){
   if(tec||rec) fab.hidden=true;
   const fn= pend ? vPendente : ({painel:(tec?vPaPum:rec?vRecepcao:vPainel), suites:vSuites, prev:vRot, equipe:vEquipe, ajustes:vAjustes}[S.tab] || vPainel);
   const ae=document.activeElement, aid=(ae&&v.contains(ae))?ae.id:null, apos=ae&&ae.selectionStart;
+  try{ if(S.mode!=="loading"&&["tecnico","recepcao","supervisor","gerente"].includes(S.role)) localStorage.setItem("luvman.role",S.role); }catch(e){}
   const wasSk=v.dataset.sk==="1", nowSk=(S.mode==="loading" && !S.hasCache);
   v.innerHTML = nowSk ? skeleton() : fn(); v.dataset.sk=nowSk?"1":"";
   if(nowSk){ fab.hidden=true; const nc2=document.querySelector(".nav-c"); if(nc2) nc2.hidden=true; }
@@ -2132,7 +2177,15 @@ function render(){
   enhanceSelects(v); enhanceSelects(document.querySelector(".side"));
   if(S.form) refreshSheet();
 }
+function roleView(){ if(S.mode==="loading"&&!S.hasCache){ try{ const r=localStorage.getItem("luvman.role"); if(r) return r; }catch(e){} } return S.role; }
 function skeleton(){
+  const role=roleView();
+  if(role==="tecnico"||role==="recepcao"){
+    const ac='<div class="skac"><div class="sk" style="width:42px;height:42px;border-radius:12px;flex:none"></div><div style="flex:1;display:grid;gap:7px"><div class="sk" style="height:15px;width:55%"></div><div class="sk" style="height:11px;width:35%"></div></div><div class="sk" style="width:46px;height:22px;border-radius:11px"></div></div>';
+    return '<div class="skw"><div style="display:flex;justify-content:space-between;align-items:center"><div class="sk" style="height:28px;width:58%"></div><div class="sk" style="height:18px;width:22%"></div></div><div class="sk" style="height:5px;margin-top:14px;border-radius:9px"></div>'+
+      (role==="recepcao"?'<div class="sk" style="height:84px;border-radius:18px;margin-top:18px"></div>':'')+
+      '<div style="display:grid;gap:10px;margin-top:18px">'+ac.repeat(3)+'</div><div class="sk" style="height:92px;border-radius:20px;margin-top:14px"></div></div>';
+  }
   const card='<div class="skc"><div class="sk" style="width:56px;height:56px;border-radius:16px;flex:none"></div><div style="flex:1;display:grid;gap:8px"><div class="sk" style="height:18px;width:80%"></div><div class="sk" style="height:14px;width:45%"></div></div></div>';
   return '<div class="skw"><div class="sk" style="height:38px;width:58%"></div><div class="sk" style="height:18px;width:42%;margin-top:10px"></div>'+
     '<div class="sem3" style="margin-top:22px">'+'<div class="sk" style="height:86px;border-radius:18px"></div>'.repeat(3)+'</div>'+
@@ -2820,6 +2873,7 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  goRot(el){ S.rot=S.rot||{}; S.rot.view=el.dataset.v; S.tab="prev"; haptic(); render(); window.scrollTo({top:0}); },
   trava(el){ const p=S.cfg.equipe[+el.dataset.i], u=el.dataset.u; if(!p) return; p.pausas=(p.pausas||[]); const on=!p.pausas.includes(u); p.pausas=on?p.pausas.concat([u]):p.pausas.filter(x=>x!==u);
     saveCfg(); haptic(); toast((on?"🔒 "+first(p.nome)+" travado em ":"✅ "+first(p.nome)+" liberado em ")+unitNames([u]), true); },
   addRecUnit(){ const u=curUnit(), key=recKeyUnit(u); if(S.cfg.equipe.some(e=>chaveCpf(e.cpf)===key)){ toast("A recepção de "+u.nome+" já existe"); return; }
