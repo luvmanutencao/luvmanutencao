@@ -1606,6 +1606,8 @@ async function iaOrganize(F){
     if(!(F.raw||"").trim()){ F.raw=[r.titulo, r.descricao].filter(Boolean).join(" — "); F.rawIA=true; }
     F.aiRes={titulo:o.titulo, descricao:o.descricao, cat:o.categoria, pr, motivo:String(r.motivo||""), etapas:(o.checklist||[]).length, local:o.local};
     F.aiDone=true; F.aiNote="✦ Organizado pela IA. Confira antes de enviar.";
+    if(F.type==="cham"){ const mp={hidraulica:"agua"}; if(!F.prob){ const k=mp[o.categoria]||(PROBS.find(x=>x.c===o.categoria)||{}).k; if(k) F.prob=k; }
+      if(pr && !F.estadoMan) F.estado={1:"agora",3:"hoje",4:"depois"}[pr]||F.estado; if(!F.local && o.local) F.local=o.local; }
   }catch(e){ if(S.form===F) F.aiNote="A IA não respondeu agora. Pode enviar assim mesmo."; }
   F.aiBusy=false; if(S.form===F) refreshSheet();
 }
@@ -1854,6 +1856,8 @@ function sheetCham(F){
   if(isS) h+='<label class="pd2"><input type="checkbox" data-act="chamParada"'+(F.parada?" checked":"")+'>Tirar a suíte de venda até resolver</label>';
   const fotos=F.pend||[];
   if(fotos.length||F.up>0) h+='<div class="ch-extra">'+fotos.map((p,i)=>'<div class="ft"><img src="'+esc(p.url)+'" alt=""><button class="ft-x" data-act="unpend" data-i="'+i+'" aria-label="Tirar foto">×</button></div>').join("")+Array.from({length:F.up||0}).map(()=>'<div class="ft"><span class="ft-l"></span></div>').join("")+'</div>';
+  if(F.aiBusy) h+='<div class="iar busy" style="margin-top:12px"><div class="iar-h">'+li("spark",16)+'<b>A IA está analisando a foto…</b></div><div class="sk" style="height:14px;width:70%"></div></div>';
+  else if(F.aiRes) h+='<div style="margin-top:12px">'+iaResumo(F)+'</div>';
   h+='<div class="dt2"><label class="sr" for="fRaw">Detalhe</label><input id="fRaw" data-in="raw" placeholder="'+(F.rec?"Ouvindo… fale agora":"Detalhe (opcional)")+'" value="'+esc(F.raw||"")+'">'+
     '<label class="ib2" aria-label="Tirar foto"><input type="file" accept="image/*" capture="environment" data-photo="1" hidden>'+li("cam",18)+'</label>'+
     '<button class="ib2'+(F.rec?" rec":"")+'" data-act="voice" aria-label="Falar">'+li("mic",18)+'</button></div>';
@@ -2024,10 +2028,8 @@ function sheetFO(F){
   const p=(F.pend||[])[0];
   let h='<div class="sheet-h"><div><h2 id="shT">Onde é?</h2></div><button class="close" data-act="close" aria-label="Cancelar">×</button></div><div class="sheet-b fo">';
   h+='<div class="fo-ph">'+(p?'<img src="'+esc(p.url)+'" alt="Foto tirada">':'<span class="ft-l"></span>')+'<div><b>Foto tirada.</b><br>Toque no número da suíte e pronto: vai para a gerência.</div></div>';
-  if(F.iaBusy) h+='<div class="iar busy"><div class="iar-h">'+li("spark",16)+'<b>Analisando a foto…</b></div><div class="sk" style="height:14px;width:70%"></div><div class="sk" style="height:12px;width:45%"></div></div>';
-  else if(F.ia && F.ia.titulo){ const r=F.ia, U={1:["Urgente","r"],3:["Normal","y"],4:["Pode esperar","g"]}[+r.prioridade]||null, c=CATS.find(x=>x.id===r.categoria);
-    h+='<div class="iar"><div class="iar-h">'+li("spark",16)+'<b>A IA identificou</b></div><div class="iar-t">'+esc(r.titulo)+'</div>'+(r.descricao?'<div class="iar-d">'+esc(r.descricao)+'</div>':'')+
-      '<div class="iar-c">'+(c?'<span>'+catIcon(c.id,13)+esc(c.n.split(" e ")[0])+'</span>':'')+(U?'<span class="u-'+U[1]+'">'+U[0]+'</span>':'')+'</div></div>'; }
+  if(F.iaBusy) h+='<div class="iar busy"><div class="iar-h">'+li("spark",16)+'<b>A IA está analisando a foto…</b></div><div class="sk" style="height:14px;width:70%"></div><div class="sk" style="height:12px;width:45%"></div></div>';
+  else if(F.ia && F.ia.titulo){ h+=iaResumo({aiRes:iaRes(F.ia)}); }
   h+='<button class="fo-mic'+(F.rec?" on":"")+'" data-act="voice">'+li("mic",18)+(F.rec?"Ouvindo… fale agora":(F.raw?"“"+esc(F.raw.slice(0,60))+"”":"Quer explicar? Toque e fale (opcional)"))+'</button>';
   if(F.sending) return h+'<div class="empty" style="text-align:center"><span class="spin"></span> Enviando…</div></div>';
   h+='<div class="fo-g">'+suites().map(n=>'<button data-act="foSend" data-v="S:'+n+'">'+n+'</button>').join("")+'</div>';
@@ -2825,6 +2827,7 @@ function smartBox(F, ph){
     '<button class="mic'+(F.rec?" on":"")+'" data-act="voice" aria-label="'+(F.rec?"Parar de ouvir":"Falar")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button></div></div></div>'+
     (F.aiRes ? iaResumo(F) : F.aiNote?'<div class="muted" style="font-size:13px;margin-top:-6px">'+esc(F.aiNote)+'</div>':'');
 }
+function iaRes(r){ return r&&r.titulo ? {titulo:r.titulo, descricao:r.descricao||"", cat:CATS.some(c=>c.id===r.categoria)?r.categoria:"outros", pr:+r.prioridade, motivo:String(r.motivo||""), etapas:(r.checklist||[]).length, local:r.local||""} : null; }
 function iaResumo(F){ const r=F.aiRes, U={1:["Urgente","r"],3:["Normal","y"],4:["Pode esperar","g"]}[r.pr]||null;
   return '<div class="iar"><div class="iar-h">'+li("spark",16)+'<b>A IA entendeu assim</b><span>confira antes de salvar</span></div>'+
     '<div class="iar-t">'+esc(r.titulo||"")+'</div>'+(r.descricao?'<div class="iar-d">'+esc(r.descricao)+'</div>':'')+
@@ -3026,13 +3029,14 @@ const A = {
   arqV(el){ S.form.v=el.dataset.v; refreshSheet(); },
   arqMes(el){ const F=S.form, [y,m]=(F.ym).split("-").map(Number), d=new Date(y,m-1+(+el.dataset.v),1), ym=d.getFullYear()+"-"+pad(d.getMonth()+1); if(ym>todayStr().slice(0,7)) return; F.ym=ym; refreshSheet(); },
   chamParada(){ const F=S.form; F.parada=!F.parada; if(F.parada) F.estado="agora"; haptic(); refreshSheet(); },
-  chamSet(el){ const F=S.form, f=el.dataset.f; F[f]=el.dataset.v; if(f==="local"&&!F.local.startsWith("S:")) F.parada=false; haptic(); refreshSheet();
+  chamSet(el){ const F=S.form, f=el.dataset.f; F[f]=el.dataset.v; if(f==="estado") F.estadoMan=true; if(f==="local"&&!F.local.startsWith("S:")) F.parada=false; haptic(); refreshSheet();
     if(f!=="estado"){ const nx=document.querySelector(f==="local"?".pb-grid":".es-list"); if(nx) setTimeout(()=>nx.scrollIntoView({behavior:"smooth",block:"center"}),60); } },
   async chamSend(){ const F=S.form; const pb=PROBS.find(p=>p.k===F.prob), es=ESTADOS.find(e=>e.k===F.estado); if(!F.local||!pb||!es) return;
     const tecs=tecnicosDaUnidade(), resp=((tecs.find(e=>e.cats.includes(pb.c))||tecs[0])||{}).nome||"";
     const raw=(F.raw||"").trim();
     const parada=!!F.parada&&F.local.startsWith("S:");
-    const o=newOS({status:"aberta", origem:"recepcao", probRec:pb.k, abertoPor:S.me||"Recepção", titulo:pb.tit, descricao:raw, local:F.local, categoria:pb.c, prioridade:parada?1:es.p, bloqueiaSuite:parada, responsavel:resp, prazo:addDays(todayStr(),es.dias), estadoRec:es.k});
+    const o=newOS({status:"aberta", origem:"recepcao", probRec:pb.k, abertoPor:S.me||"Recepção", titulo:(F.aiRes&&F.aiRes.titulo)||pb.tit, descricao:raw, local:F.local, categoria:(F.aiRes&&F.aiRes.cat&&F.aiRes.cat!=="outros")?F.aiRes.cat:pb.c, prioridade:parada?1:es.p, bloqueiaSuite:parada, responsavel:resp, prazo:addDays(todayStr(),es.dias), estadoRec:es.k});
+    if(F.o && (F.o.checklist||[]).length) o.checklist=F.o.checklist.slice(); if(F.o && F.o.iaSugestao) o.iaSugestao=F.o.iaSugestao; if(F.aiRes && F.aiRes.descricao && !o.descricao) o.descricao=F.aiRes.descricao;
     const btn=document.querySelector('[data-act="chamSend"]'); if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span> ENVIANDO'; }
     try{ for(const p of (F.pend||[])){ const f=await uploadFoto(p.blob); S.urls[f.path]=p.url; o.fotos.push(f); } F.pend=[]; }
     catch(e){ toast("Sem conexão para enviar a foto. Tente de novo."); if(btn){ btn.disabled=false; btn.textContent="📣 ENVIAR"; } return; }
