@@ -979,6 +979,9 @@ button:focus:not(:focus-visible){outline:none}
 .iar-c span{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--ink-2)}
 .iar-c .u-r{background:var(--r-soft);color:var(--r);border-color:transparent} .iar-c .u-y{background:var(--y-soft);color:var(--y);border-color:transparent} .iar-c .u-g{background:var(--g-soft);color:var(--g);border-color:transparent}
 .iar-m{font-size:12.5px;color:var(--ink-3);font-style:italic}
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img{-webkit-user-drag:none;user-select:none}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1697,8 +1700,9 @@ function installBanner(){
 }
 
 /* ===================== trabalhando na suíte ===================== */
-function ativAt(local){ return S.ativ.filter(a=>a.local===local && (a.unidade||S.cfg.unidades[0].id)===curUnit().id); }
-function myAtiv(){ return S.cpf ? S.ativ.find(a=>a.id===S.cpf) : null; }
+function ativOk(a){ return !!a && !!a.desde && (Date.now()-new Date(a.desde).getTime()) < 8*3600e3; }
+function ativAt(local){ return S.ativ.filter(ativOk).filter(a=>a.local===local && (a.unidade||S.cfg.unidades[0].id)===curUnit().id); }
+function myAtiv(){ const a=S.cpf ? S.ativ.find(a=>a.id===S.cpf) : null; return ativOk(a)?a:null; }
 function minsDesde(iso){ return Math.max(0,Math.round((Date.now()-new Date(iso).getTime())/6e4)); }
 async function startWork(local, silent){
   if(!S.cpf || !S.me){ toast("Seu cadastro precisa estar na equipe"); return; }
@@ -1721,7 +1725,7 @@ function workBanner(){
   return '<div class="work"><span class="work-dot"></span><div class="work-t"><b>🔧 Trabalhando na '+esc(localLabel(a.local))+'</b><small>Desde '+fmtT(a.desde)+' · '+fmtMin(Math.max(1,minsDesde(a.desde)))+'</small></div><button class="btn sm light" data-act="finishWork">Terminei</button></div>';
 }
 function workNow(){
-  const list=S.ativ.filter(a=>(a.unidade||S.cfg.unidades[0].id)===curUnit().id && a.id!==S.cpf);
+  const list=S.ativ.filter(ativOk).filter(a=>(a.unidade||S.cfg.unidades[0].id)===curUnit().id && a.id!==S.cpf);
   if(!list.length) return "";
   return '<div class="worknow sec">'+list.map(a=>'<button class="wn" data-act="local" data-local="'+esc(a.local)+'"><span class="work-dot"></span><b>'+esc(first(a.nome))+'</b> na '+esc(localLabel(a.local))+' <small>há '+fmtMin(Math.max(1,minsDesde(a.desde)))+'</small></button>').join("")+'</div>';
 }
