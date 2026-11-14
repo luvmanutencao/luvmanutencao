@@ -863,6 +863,7 @@ div.sc-b{cursor:default}
 .fo-mic.on{background:var(--r);border-color:var(--r);color:#fff;animation:pulse 1.2s infinite}
 .fo-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .fo-g button{height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font:800 17px var(--font);color:var(--ink);cursor:pointer}
+.fo-g button.sug{border-color:var(--brass);box-shadow:0 0 0 3px color-mix(in srgb,var(--brass) 25%,transparent);color:var(--brass)}
 .fo-g button:active{background:var(--hero);color:var(--hero-ink)}
 .lq{display:flex;align-items:center;gap:8px;margin-top:12px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:0 12px;color:var(--ink-3)}
 .lq:focus-within{border-color:var(--brass)}
@@ -2025,14 +2026,13 @@ function cardPP(it){
   return '<div class="pp t-p"><div class="pp-h"><span class="pp-i">'+catIcon(p.categoria,22)+'</span><span class="pp-t"><b>'+esc(p.titulo)+'</b><span>Preventiva · '+esc(localLabel(p.local))+'</span></span></div>'+B("prevDone",p.id,li("check",20,"#fff",2.6)+" PRONTO","ok")+'</div>';
 }
 function sheetFO(F){
-  const p=(F.pend||[])[0];
-  let h='<div class="sheet-h"><div><h2 id="shT">Onde é?</h2></div><button class="close" data-act="close" aria-label="Cancelar">×</button></div><div class="sheet-b fo">';
-  h+='<div class="fo-ph">'+(p?'<img src="'+esc(p.url)+'" alt="Foto tirada">':'<span class="ft-l"></span>')+'<div><b>Foto tirada.</b><br>Toque no número da suíte e pronto: vai para a gerência.</div></div>';
-  if(F.iaBusy) h+='<div class="iar busy"><div class="iar-h">'+li("spark",16)+'<b>A IA está analisando a foto…</b></div><div class="sk" style="height:14px;width:70%"></div><div class="sk" style="height:12px;width:45%"></div></div>';
-  else if(F.ia && F.ia.titulo){ h+=iaResumo({aiRes:iaRes(F.ia)}); }
-  h+='<button class="fo-mic'+(F.rec?" on":"")+'" data-act="voice">'+li("mic",18)+(F.rec?"Ouvindo… fale agora":(F.raw?"“"+esc(F.raw.slice(0,60))+"”":"Quer explicar? Toque e fale (opcional)"))+'</button>';
-  if(F.sending) return h+'<div class="empty" style="text-align:center"><span class="spin"></span> Enviando…</div></div>';
-  h+='<div class="fo-g">'+suites().map(n=>'<button data-act="foSend" data-v="S:'+n+'">'+n+'</button>').join("")+'</div>';
+  let h='<div class="sheet-h"><div><h2 id="shT">Relatar problema</h2><div class="sub" style="font-size:13px">Foto, o que aconteceu e onde. Pronto.</div></div><button class="close" data-act="close" aria-label="Cancelar">×</button></div><div class="sheet-b fo">';
+  h+=fotosHTML(F,true);
+  h+=smartBox(F,"O que aconteceu? (se quiser) Ex.: lâmpada do espelho queimada");
+  if(F.sending) return h+'<div class="empty" style="text-align:center"><span class="spin"></span> Enviando para a gerência…</div></div>';
+  const sug=F.aiRes&&F.o.local&&F.o.local.startsWith("S:")?F.o.local:"";
+  h+='<div class="lbl2"><span>ONDE É? TOQUE E PRONTO</span>'+(sug?'<b class="lbl2-v">IA sugere '+esc(localLabel(sug))+'</b>':'')+'</div>';
+  h+='<div class="fo-g">'+suites().map(n=>'<button class="'+("S:"+n===sug?"sug":"")+'" data-act="foSend" data-v="S:'+n+'">'+n+'</button>').join("")+'</div>';
   h+='<div class="as2">'+S.cfg.areas.filter(a=>a!=="Todas as suítes").map(a=>'<button data-act="foSend" data-v="A:'+esc(a)+'">'+esc(a)+'</button>').join("")+'</div>';
   h+=campoLugar(F,"foSend");
   return h+'</div>';
@@ -3013,15 +3013,15 @@ const A = {
   prevFreq(el){ S.form.o.freq=+el.dataset.v; haptic(); refreshSheet(); },
   async foSend(el){ const F=S.form; if(!F||F.sending) return; F.o.local=el.dataset.v; F.sending=true; F.pend0=(F.pend||[]).map(p=>p.blob); refreshSheet(); haptic();
     const o=F.o; const raw=(F.raw||"").trim(); const pp=raw?parseText(raw):{};
-    if(pp.categoria) o.categoria=pp.categoria;
+    if(pp.categoria && !F.aiRes) o.categoria=pp.categoria;
     o.titulo = raw ? titleFrom(raw) : "Problema na "+localLabel(o.local); if(raw) o.descricao=raw;
-    if(F.ia){ iaAplica(o, F.ia); }
+    if(F.aiRes){ if(F.aiRes.titulo) o.titulo=String(F.aiRes.titulo).slice(0,90); if(F.aiRes.descricao) o.descricao=F.aiRes.descricao; }
     try{ for(const p of (F.pend||[])){ const f=await uploadFoto(p.blob); S.urls[f.path]=p.url; o.fotos.push(f); } F.pend=[]; }
     catch(e){ F.sending=false; refreshSheet(); toast("Sem internet para enviar a foto. Tente de novo."); return; }
     o.numero=nextNum(); o.criadoEm=nowISO(); delete o._prazoAuto; o.status="triagem"; o.relatadoPor=S.me||""; o.responsavel=""; o.prazo="";
     const blobsIA=(F.pend0||[]).slice();
     hist(o,"Relatado com foto"); S.form=null; write("os",o); closeSheet(); ding(1); toast("Enviado para a gerência ✓", true);
-    if(!F.ia) iaDepois(o.id, blobsIA, raw); },
+    if(!F.aiDone) iaDepois(o.id, blobsIA, raw); },
   pvNext(el){ const p=S.prev.find(x=>x.id===el.dataset.id); if(!p) return; const nx=pvProxima(p); if(!nx) return;
     S.form={type:"pvitens", id:p.id, sel:{[nx]:true}}; A.pvSave(); },
   lqPick(el){ const F=S.form; F.local=el.dataset.v; F.lq=""; haptic(); refreshSheet(); },
@@ -3153,7 +3153,7 @@ const A = {
   copyLogin(el){ const p=S.cfg.equipe[+el.dataset.i]; if(p) copy(loginEmail(p.cpf)); },
   tab(el){ S.tab=el.dataset.tab; render(); window.scrollTo({top:0}); },
   new(){ if(S.role==="tecnico"){ const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.capture="environment";
-      inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; try{ const blob=await shrink(f,1600,.75); openSheet({type:"fo", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}, pend:[{blob, url:URL.createObjectURL(blob)}], touched:{}}); iaFoto(S.form); }catch(e){ toast("Não deu para usar essa foto"); } };
+      inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; try{ const blob=await shrink(f,1600,.75); openSheet({type:"fo", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}, pend:[{blob, url:URL.createObjectURL(blob)}], touched:{}}); iaOrganize(S.form); }catch(e){ toast("Não deu para usar essa foto"); } };
       inp.click(); return; }
     if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:"", estado:"hoje"}); return; } if(!isChefe()){ openSheet({type:"rel", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}}); return; } openSheet({type:"os", mode:"new", o:newOS({}), raw:"", parsed:{}}); },
   newAt(el){ if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:el.dataset.local, estado:"hoje"}); return; } const l=el.dataset.local; openSheet({type:"os", mode:"new", o:newOS(Object.assign({local:l}, isChefe()?{}:{status:"triagem"})), raw:"", parsed:{}, touched:{local:true}}); },
