@@ -1711,7 +1711,7 @@ async function iaOrganize(F){
 }
 // IA em segundo plano: analisa a foto depois de enviada e completa o relato para a gerência
 async function iaChamar(blobs, texto){
-  if(!CFG.IA_WEBHOOK_URL || !blobs.length) return null;
+  if(!CFG.IA_WEBHOOK_URL || (!blobs.length && !(texto||"").trim())) return null;
   try{
     const imgs=[]; for(const b of blobs.slice(0,3)) imgs.push(await b64(await shrink(b,900,.7)));
     const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),35000);
@@ -2127,9 +2127,9 @@ function cardPP(it){
   return '<div class="pp t-p"><div class="pp-h"><span class="pp-i">'+catIcon(p.categoria,22)+'</span><span class="pp-t"><b>'+esc(p.titulo)+'</b><span>Preventiva · '+esc(localLabel(p.local))+'</span></span></div>'+B("prevDone",p.id,li("check",20,"#fff",2.6)+" PRONTO","ok")+'</div>';
 }
 function sheetFO(F){
-  let h='<div class="sheet-h"><div><h2 id="shT">Relatar problema</h2><div class="sub" style="font-size:13px">Foto, o que aconteceu e onde. Pronto.</div></div><button class="close" data-act="close" aria-label="Cancelar">×</button></div><div class="sheet-b fo">';
+  let h='<div class="sheet-h"><div><h2 id="shT">Relatar problema</h2><div class="sub" style="font-size:13px">Tire uma foto ou escreva/fale o que aconteceu. Depois toque onde é.</div></div><button class="close" data-act="close" aria-label="Cancelar">×</button></div><div class="sheet-b fo">';
   h+=fotosHTML(F,true);
-  h+=smartBox(F,"O que aconteceu? (se quiser) Ex.: lâmpada do espelho queimada");
+  h+=smartBox(F,"O que aconteceu? Ex.: lâmpada do espelho queimada");
   if(F.sending) return h+'<div class="empty" style="text-align:center"><span class="spin"></span> Enviando para a gerência…</div></div>';
   const sug=F.aiRes&&F.o.local&&F.o.local.startsWith("S:")?F.o.local:"";
   h+='<div class="lbl2"><span>ONDE É? TOQUE E PRONTO</span>'+(sug?'<b class="lbl2-v">IA sugere '+esc(localLabel(sug))+'</b>':'')+'</div>';
@@ -2431,7 +2431,7 @@ function render(){
   const pb=document.querySelector('.nav [data-tab="painel"]'); if(pb) pb.lastChild.nodeValue = tec ? "Tarefas" : rec ? "Chamados" : "Fila";
   const rb=document.querySelector('.nav [data-tab="prev"]'); if(rb){ rb.lastChild.nodeValue = "Rotinas"; rb.hidden=tec||rec; }
   const sbn=document.querySelector('.nav [data-tab="suites"]'); if(sbn) sbn.hidden=tec;
-  if(nc) nc.lastChild.nodeValue= rec ? "Chamar" : "Foto";
+  if(nc) nc.lastChild.nodeValue= rec ? "Chamar" : "Relatar";
   if(tec||rec) fab.hidden=true;
   const fn= pend ? vPendente : ({painel:(tec?vPaPum:rec?vRecepcao:vPainel), suites:vSuites, prev:vRot, equipe:vEquipe, ajustes:vAjustes}[S.tab] || vPainel);
   const ae=document.activeElement, aid=(ae&&v.contains(ae))?ae.id:null, apos=ae&&ae.selectionStart;
@@ -2718,7 +2718,7 @@ function sheetGuia(F){
   const P=[["👋","Olá!","Aqui aparecem as suas tarefas do dia."],
     ["▶️","Aperte COMEÇAR","Quando for fazer, aperte <b>COMEÇAR</b>. Quando acabar, aperte <b>TERMINEI</b>. Só isso."],
     ["🔴","Vermelho primeiro","Vermelho é para fazer primeiro. Depois amarelo. Depois verde."],
-    ["📷","Viu algo quebrado?","Aperte <b>FOTO</b>, no meio, lá embaixo. Tire a foto, escolha o lugar e envie."]];
+    ["📷","Viu algo quebrado?","Aperte <b>RELATAR</b>, no meio, lá embaixo. Tire uma foto ou escreva/fale o que aconteceu, toque na suíte e pronto."]];
   if(S.role==="recepcao") P.splice(0,P.length,["👋","Olá, recepção!","Por aqui você chama a manutenção e acompanha tudo, sem grupo de WhatsApp."],["📣","Aperte CHAMAR","Escolha a suíte, toque no que aconteceu e diga se tem convidado. Pronto: vai direto para o técnico."],["🔔","Acompanhe ao vivo","Você vê quando ele começa e quando termina. O celular toca quando a suíte fica pronta."],["🏨","Mapa das suítes","Em “Suítes” você vê quais estão à venda, em manutenção ou paradas."]);
   const i=F.i||0, p=P[i];
   return '<div class="guia"><div class="guia-i">'+p[0]+'</div><h2 id="shT">'+p[1]+'</h2><p>'+p[2]+'</p><div class="guia-dots">'+P.map((_,j)=>'<i class="'+(j===i?"on":"")+'"></i>').join("")+'</div>'+
@@ -3173,7 +3173,8 @@ const A = {
   ftCat(el){ const F=S.form; F.o.categoria=el.dataset.v; F.autoCat=false; F.catTouched=true; haptic(); refreshSheet(); },
   rotHora(el){ S.form.o.hora=el.dataset.v; refreshSheet(); },
   prevFreq(el){ S.form.o.freq=+el.dataset.v; haptic(); refreshSheet(); },
-  async foSend(el){ const F=S.form; if(!F||F.sending) return; F.o.local=el.dataset.v; F.sending=true; F.pend0=(F.pend||[]).map(p=>p.blob); refreshSheet(); haptic();
+  async foSend(el){ const F=S.form; if(!F||F.sending) return;
+    if(!(F.pend||[]).length && !(F.raw||"").trim()){ toast("Tire uma foto ou escreva o que aconteceu"); const t=document.getElementById("fRaw"); if(t) t.focus(); return; } F.o.local=el.dataset.v; F.sending=true; F.pend0=(F.pend||[]).map(p=>p.blob); refreshSheet(); haptic();
     const o=F.o; const raw=(F.raw||"").trim(); const pp=raw?parseText(raw):{};
     if(pp.categoria && !F.aiRes) o.categoria=pp.categoria;
     o.titulo = raw ? titleFrom(raw) : "Problema na "+localLabel(o.local); if(raw) o.descricao=raw;
@@ -3314,9 +3315,7 @@ const A = {
     closeSheet(); toast("Senha trocada", true); },
   copyLogin(el){ const p=S.cfg.equipe[+el.dataset.i]; if(p) copy(loginEmail(p.cpf)); },
   tab(el){ S.tab=el.dataset.tab; render(); window.scrollTo({top:0}); },
-  new(){ if(S.role==="tecnico"){ const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.capture="environment";
-      inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; try{ const blob=await shrink(f,1600,.75); openSheet({type:"fo", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}, pend:[{blob, url:URL.createObjectURL(blob)}], touched:{}}); iaOrganize(S.form); }catch(e){ toast("Não deu para usar essa foto"); } };
-      inp.click(); return; }
+  new(){ if(S.role==="tecnico"){ openSheet({type:"fo", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}, pend:[], touched:{}}); return; }
     if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:"", estado:"hoje"}); return; } if(!isChefe()){ openSheet({type:"rel", mode:"new", o:newOS({status:"triagem"}), raw:"", parsed:{}}); return; } openSheet({type:"os", mode:"new", o:newOS({}), raw:"", parsed:{}}); },
   newAt(el){ if(S.role==="recepcao"){ openSheet({type:"cham", mode:"new", o:newOS({status:"aberta"}), raw:"", parsed:{}, local:el.dataset.local, estado:"hoje"}); return; } const l=el.dataset.local; openSheet({type:"os", mode:"new", o:newOS(Object.assign({local:l}, isChefe()?{}:{status:"triagem"})), raw:"", parsed:{}, touched:{local:true}}); },
   open(el){ editOS(el.dataset.id); },
