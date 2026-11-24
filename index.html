@@ -1026,6 +1026,37 @@ img{-webkit-user-drag:none;user-select:none}
   body.printing .no-print{display:none!important}
   body.printing .rs,.rk,.rm{break-inside:avoid}
 }
+.ad{gap:12px}
+.ad-sub{margin:0;color:var(--ink-2);font-size:14px}
+.ad-g{display:grid;gap:10px} .ad-g.two{grid-template-columns:1fr 1fr}
+.ad-s{position:relative;display:grid;place-items:center;align-content:center;gap:8px;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line)}
+.ad-g:not(.two) .ad-s{aspect-ratio:4/3}
+.ad-s img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ad-s em{position:absolute;left:8px;top:8px;font-style:normal;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 8px;border-radius:7px;background:rgba(0,0,0,.6);color:#fff}
+.ad-s.cam{cursor:pointer;background:var(--brass-soft);border:2px dashed color-mix(in srgb,var(--brass) 45%,transparent);color:var(--brass)}
+.ad-s.cam b{font-size:15px;text-align:center;padding:0 10px} .ad-s.cam em{background:var(--brass)}
+.ad-s.cam:active{transform:scale(.98)}
+.ad-ic{width:68px;height:68px;border-radius:50%;background:var(--brass);color:#fff;display:grid;place-items:center}
+.ad-none{font-size:12.5px;color:var(--ink-3)}
+.ad-busy{display:grid;justify-items:center;gap:10px;padding:40px 0;color:var(--ink-2)}
+.adb{margin-bottom:4px}
+.adm{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;max-width:340px;margin-top:6px}
+.adm-t{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--surface-2);display:grid;place-items:center;color:var(--ink-3)}
+.adm-t img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.adm-t em{position:absolute;left:5px;bottom:5px;font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,.6);color:#fff}
+.adb .adm{max-width:none}
+.cmp{--x:50%;position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:#000;touch-action:pan-y}
+.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmp-a{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--x)) 0 0)}
+.cmp-ln{position:absolute;top:0;bottom:0;left:var(--x);width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.5)}
+.cmp-ln::after{content:"‹ ›";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:#fff;color:#111;font-weight:800;display:grid;place-items:center;font-size:15px}
+.cmp-l{position:absolute;top:10px;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 8px;border-radius:7px;background:rgba(0,0,0,.6);color:#fff} .cmp-l.a{left:10px} .cmp-l.d{right:10px}
+.cmp-r{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.ft-fase{position:absolute;left:4px;bottom:4px;font-style:normal;font-size:9px;font-weight:800;padding:2px 5px;border-radius:5px;background:rgba(0,0,0,.65);color:#fff}
+.ft{position:relative}
+.ad-opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.ad-opt input{width:20px;height:20px;margin-top:2px;accent-color:var(--brass);flex:none}
+.ad-opt b{display:block;font-size:14.5px} .ad-opt small{font-size:12.5px;color:var(--ink-3)}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -1671,7 +1702,7 @@ async function handlePhotos(files){
   if(F.mode==="new" && CFG.IA_WEBHOOK_URL && !F.aiDone) iaOrganize(F);
 }
 function fotosHTML(F, canAdd){
-  const saved=(F.o.fotos||[]).map((f,i)=>'<button class="ft" data-act="foto" data-p="'+esc(f.path)+'" aria-label="Ver foto '+(i+1)+'">'+(fotoSrc(f.path)?'<img src="'+esc(fotoSrc(f.path))+'" alt="">':'<span class="ft-l"></span>')+'</button>').join("");
+  const saved=(F.o.fotos||[]).map((f,i)=>'<button class="ft" data-act="foto" data-p="'+esc(f.path)+'" aria-label="Ver foto '+(i+1)+'">'+(fotoSrc(f.path)?'<img src="'+esc(fotoSrc(f.path))+'" alt="">':'<span class="ft-l"></span>')+(f.fase?'<i class="ft-fase">'+(f.fase==="antes"?"ANTES":"DEPOIS")+'</i>':'')+'</button>').join("");
   const pend=(F.pend||[]).map((p,i)=>'<div class="ft"><img src="'+esc(p.url)+'" alt=""><button class="ft-x" data-act="unpend" data-i="'+i+'" aria-label="Remover foto">×</button></div>').join("");
   const loading=Array.from({length:F.up||0}).map(()=>'<div class="ft"><span class="ft-l"></span></div>').join("");
   const add = canAdd ? '<label class="ft add"><input type="file" accept="image/*" capture="environment" data-photo="1" hidden><span class="ft-ic">'+li("cam",24)+'</span><small>Câmera</small></label><label class="ft add"><input type="file" accept="image/*" multiple data-photo="1" hidden><span class="ft-ic">'+li("image",24)+'</span><small>Galeria</small></label>' : "";
@@ -1999,7 +2030,7 @@ function sheetArq(F){
       const c=isCancel(o), real=o.iniciadoEm&&!c?fmtMin(durMin(o.iniciadoEm,o.concluidoEm)):"";
       return '<div class="arq-i'+(c?" c":"")+'"><span class="hdot '+(c?"late":"ok")+'">'+(c?"⛔":"✓")+'</span><div class="arq-b" data-act="open" data-id="'+o.id+'" role="button" tabindex="0"><b>'+esc(o.titulo)+'</b>'+
         '<span>'+esc(localLabel(o.local))+' · '+fmtT(o.concluidoEm)+(o.responsavel&&S.role!=="tecnico"?' · '+esc(first(o.responsavel)):'')+(real?' · levou '+real:'')+(o.origem==="recepcao"&&S.role!=="recepcao"?' · 📣':'')+'</span>'+
-        (c?'<small>'+esc(o.solucao==="Não procede"?"Não procede (gerência)":o.motivoCancel||"Cancelado")+'</small>':o.solucao?'<small>🛠️ '+esc(o.solucao)+'</small>':'')+'</div>'+
+        (c?'<small>'+esc(o.solucao==="Não procede"?"Não procede (gerência)":o.motivoCancel||"Cancelado")+'</small>':o.solucao?'<small>🛠️ '+esc(o.solucao)+'</small>':'')+(()=>{ const ad=adPar(o.fotos); return ad.antes||ad.depois?adMini(ad.antes,ad.depois,o.titulo):''; })()+'</div>'+
         (!c&&podeReabrir(o)?'<button class="sd-b" data-act="reabrir" data-id="'+o.id+'">↩</button>':'')+'</div>'; }).join("")+'</div>'; }).join("");
   return h+'</div>';
 }
@@ -2071,15 +2102,17 @@ function sheetTec(F){
   const quem=o.origem==="recepcao"?(first(o.abertoPor)||"Recepção"):o.relatadoPor?first(o.relatadoPor):"Gerência";
   let h='<div class="sheet-h"><div><div class="osnum">'+esc(osCode(o))+'</div><h2 id="shT" style="margin-top:2px">'+esc(o.titulo||"Sem título")+'</h2></div><div style="display:flex;gap:8px;align-items:center">'+(urgOf(o.prioridade)===1&&isOpen(o)?'<span class="tg tg-r">URGENTE</span>':tag2(o))+'<button class="close" data-act="close" aria-label="Fechar">×</button></div></div><div class="sheet-b tec">';
   if(ph) h+='<button class="tec-ph" data-act="foto" data-p="'+esc(ph.path)+'">'+(src?'<img src="'+esc(src)+'" alt="Foto do problema">':'<span class="ft-l"></span>')+(o.fotos.length>1?'<em>+'+(o.fotos.length-1)+'</em>':'')+'</button>';
+  { const ad=adPar(o.fotos); h+=adBloco(ad.antes, ad.depois, o.titulo); }
   h+='<div class="kv2">'+[["Onde",localLabel(o.local)],[(o.ajudantes||[]).length?"Equipe":"Pedido por",(o.ajudantes||[]).length?quemTxt(o):quem],["Prazo",o.prazo?(diffDays(o.prazo)===0?"Hoje":fmtD(o.prazo)):"Sem prazo"],["Tempo previsto",o.tempo?fmtMin(o.tempo):"—"]].map(([k,v])=>'<div><span>'+k+'</span><b>'+esc(v)+'</b></div>').join("")+'</div>';
   if(o.descricao && o.descricao!==o.titulo) h+='<div class="tec-d">'+esc(o.descricao)+'</div>';
   if(o.checklist.length) h+='<div class="lbl2"><span>ETAPAS</span><span>'+o.checklist.filter(c=>c.ok).length+' de '+o.checklist.length+'</span></div><div class="et2">'+o.checklist.map((c,i)=>'<label class="'+(c.ok?"ok":"")+'"><input type="checkbox" data-act="ck" data-i="'+i+'"'+(c.ok?" checked":"")+'><span>'+esc(c.t)+'</span></label>').join("")+'</div>';
   if(o.status==="andamento") h+='<div class="field"><label for="fSol">O que você fez? <span class="muted">(se quiser)</span></label><textarea id="fSol" class="inp" data-of="solucao" style="min-height:54px">'+esc(o.solucao)+'</textarea></div>';
   h+='<label class="tec-add"><input type="file" accept="image/*" capture="environment" data-photo="1" hidden>'+li("cam",17)+'Adicionar foto</label>';
   const B=(a,lab,cls,ico)=>'<button class="b2 '+cls+'" data-act="'+a+'">'+(ico||"")+lab+'</button>';
-  let bar = o.status==="aberta" ? B("st_andamento","Começar","go",li("play",14,"#fff"))
-    : o.status==="andamento" ? B("st_aguardando","Aguardando peça","line",li("clock",17))+B("st_concluida","Concluir","ok big",li("check",18,"#fff",2.4))
-    : o.status==="aguardando" ? B("st_andamento","Peça chegou","line",li("undo",17))+B("st_concluida","Concluir","ok big",li("check",18,"#fff",2.4))
+  const BI=(a,lab,cls,ico)=>'<button class="b2 '+cls+'" data-act="'+a+'" data-id="'+o.id+'">'+(ico||"")+lab+'</button>';
+  let bar = o.status==="aberta" ? BI("tstart","Começar","go",li("play",14,"#fff"))
+    : o.status==="andamento" ? B("st_aguardando","Aguardando peça","line",li("clock",17))+BI("tdone","Concluir","ok big",li("check",18,"#fff",2.4))
+    : o.status==="aguardando" ? B("st_andamento","Peça chegou","line",li("undo",17))+BI("tdone","Concluir","ok big",li("check",18,"#fff",2.4))
     : podeReabrir(o) ? B("reabrirF","Reabrir (concluí por engano)","line",li("undo",17)) : "";
   if(o.prevId&&prevMulti(S.prev.find(x=>x.id===o.prevId))&&isOpen(o)) bar='<button class="b2 go" data-act="pvOpen" data-id="'+o.prevId+'">Marcar suítes feitas</button>';
   h+='</div>'+(bar?'<div class="bar2">'+bar+'</div>':'');
@@ -2118,8 +2151,11 @@ function cardPP(it){
     const tg=urgOf(o.prioridade)===1?'<span class="tg tg-rs">URGENTE</span>':sem(o).k==="r"?'<span class="tg tg-r">ATRASADA</span>':'';
     return '<div class="pp t-'+k+'"><div class="pp-h" data-act="open" data-id="'+o.id+'" role="button" tabindex="0"><span class="pp-i">'+catIcon(o.categoria,22)+'</span><span class="pp-t"><b>'+esc(o.titulo)+'</b><span>'+esc(localLabel(o.local))+(o.origem==="recepcao"?" · pedido da recepção":"")+((o.ajudantes||[]).length?" · com "+esc([o.responsavel].concat(o.ajudantes).filter(n=>n&&n!==S.me).map(first).join(", ")):"")+'</span></span>'+tg+'</div>'+
       (agu?B("open",o.id,li("clock",19)+" ESPERANDO PEÇA","n"):and?B("tdone",o.id,li("check",20,"#fff",2.6)+" PRONTO","ok"):B("tstart",o.id,"▶ FAZER","go"))+'</div>'; }
-  if(it.k==="rot"){ const r=it.r;
-    return '<div class="pp t-y"><div class="pp-h"><span class="pp-i">'+li("list",22)+'</span><span class="pp-t"><b>'+esc(r.titulo)+'</b><span>Rotina'+(r.hora?" · "+esc(r.hora):"")+(r.local?" · "+esc(localLabel(r.local)):"")+'</span></span></div>'+B("rotDone",r.id,li("check",20,"#fff",2.6)+" PRONTO","ok")+'</div>'; }
+  if(it.k==="rot"){ const r=it.r, ini=r.antesDepois&&r.ini&&r.ini[todayStr()];
+    const btn = !r.antesDepois ? B("rotDone",r.id,li("check",20,"#fff",2.6)+" PRONTO","ok")
+      : ini ? B("rotDone",r.id,li("cam",20,"#fff")+" PRONTO · FOTO DO DEPOIS","ok") : B("rotDone",r.id,li("cam",20,"#fff")+" COMEÇAR · FOTO DO ANTES","go");
+    return '<div class="pp t-y"><div class="pp-h"><span class="pp-i">'+li("list",22)+'</span><span class="pp-t"><b>'+esc(r.titulo)+'</b><span>Rotina'+(r.hora?" · "+esc(r.hora):"")+(r.local?" · "+esc(localLabel(r.local)):"")+(ini?" · começou às "+fmtT(ini.em):"")+'</span></span>'+(r.antesDepois?'<span class="tg tg-p">ANTES E DEPOIS</span>':'')+'</div>'+
+      (ini&&ini.antes?adMini(ini.antes,null,r.titulo):'')+btn+'</div>'; }
   const p=it.p;
   if(prevMulti(p)){ const nx=pvProxima(p), pr=prevProg(p), lab=nx?(nx.startsWith("S:")?"SUÍTE "+nx.slice(2):localLabel(nx).toUpperCase()):"";
     return '<div class="pp t-p"><div class="pp-h"><span class="pp-i">'+catIcon(p.categoria,22)+'</span><span class="pp-t"><b>'+esc(p.titulo)+'</b><span>Preventiva · '+pr.n+' de '+pr.t+' feitas</span></span></div>'+
@@ -2197,6 +2233,7 @@ function sheetRot(F){
   h+='<div class="grid2"><div class="field"><label for="rH">Horário (opcional)</label><input id="rH" type="time" class="inp" data-op="hora" value="'+esc(r.hora||"")+'"></div><div class="field"><label for="rL">Onde</label><select id="rL" class="sel" data-op="local">'+localOptions(r.local)+'</select></div></div>';
   h+='<div class="grid2"><div class="field"><label for="rC">Setor</label><select id="rC" class="sel" data-op="categoria">'+CATS.map(c=>'<option value="'+c.id+'"'+(r.categoria===c.id?" selected":"")+'>'+esc(c.n)+'</option>').join("")+'</select></div>'+
     (chefe?'<div class="field"><label for="rR">Quem faz</label><select id="rR" class="sel" data-op="responsavel">'+respOptions(r.responsavel,"Quem cuida do setor")+'</select></div>':'<div class="field"><span class="lbl">Quem faz</span><div class="kv"><div style="grid-column:1/-1"><b>'+esc(r.responsavel||S.me||"Você")+'</b></div></div></div>')+'</div>';
+  h+='<label class="ad-opt"><input type="checkbox" data-act="rotAD"'+(r.antesDepois?" checked":"")+'><span><b>Pedir foto do antes e do depois</b><small>Ex.: jardim, limpeza, pintura. O técnico tira uma foto ao começar e outra ao terminar.</small></span></label>';
   const pode=F.mode==="edit"&&canEditRot(r);
   h+='<div class="foot-a">'+(pode?'<button class="btn ghost danger" data-act="delRot">Excluir</button>':'<button class="btn ghost" data-act="close">Cancelar</button>')+'<button class="btn pri" data-act="saveRot">Salvar rotina</button></div>';
   return h+'</div>';
@@ -2348,6 +2385,71 @@ function sheetRelM(F){
   h+='<p class="rel-rod">Gerado em '+new Date().toLocaleString("pt-BR")+' · '+D.criadas+' abertas no mês · '+D.canc+' canceladas</p>';
   h+='</div><div class="bar2 no-print"><button class="b2 line" data-act="relPdf">'+li("file",17)+'Baixar PDF</button><button class="b2 go" data-act="close">Fechar</button></div>';
   return h;
+}
+/* ===================== FOTO ANTES E DEPOIS ===================== */
+function adPar(fotos){ const f=fotos||[]; return {antes:f.find(x=>x&&x.fase==="antes")||null, depois:[...f].reverse().find(x=>x&&x.fase==="depois")||null}; }
+function adMini(antes, depois, titulo){
+  if(!antes && !depois) return "";
+  const t=(f,l)=>'<span class="adm-t">'+(f&&fotoSrc(f.path)?'<img src="'+esc(fotoSrc(f.path))+'" alt="">':'<span class="adm-v">'+li("cam",14)+'</span>')+'<em>'+l+'</em></span>';
+  return '<button class="adm" data-act="cmp" data-a="'+esc(antes?antes.path:"")+'" data-d="'+esc(depois?depois.path:"")+'" data-t="'+esc(titulo||"")+'" data-ta="'+esc(antes?antes.em:"")+'" data-td="'+esc(depois?depois.em:"")+'" aria-label="Ver antes e depois">'+t(antes,"ANTES")+t(depois,"DEPOIS")+'</button>';
+}
+function adBloco(antes, depois, titulo){
+  if(!antes && !depois) return "";
+  return '<div class="adb"><div class="lbl2" style="margin:0 2px 8px"><span>ANTES E DEPOIS</span>'+(antes&&depois?'<span>toque para comparar</span>':'')+'</div>'+adMini(antes,depois,titulo)+'</div>';
+}
+function sheetAD(F){
+  const antes=F.fase==="depois"?F.antes:null, src=antes&&fotoSrc(antes.path);
+  const tit=F.fase==="antes"?"Foto do ANTES":"Foto de como FICOU";
+  const sub=F.fase==="antes"?"Mostre como está antes de começar.":"Agora mostre o resultado do serviço.";
+  let h='<div class="sheet-h"><div><h2 id="shT">'+tit+'</h2><div class="sub" style="font-size:13px">'+esc(F.titulo||"")+(F.local?' · '+esc(localLabel(F.local)):'')+'</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b ad">';
+  if(F.busy) return h+'<div class="ad-busy"><span class="spin"></span><b>Salvando a foto…</b></div></div>';
+  h+='<p class="ad-sub">'+sub+'</p>';
+  h+='<div class="ad-g'+(F.fase==="depois"?" two":"")+'">';
+  if(F.fase==="depois") h+='<div class="ad-s done">'+(antes?(src?'<img src="'+esc(src)+'" alt="Antes">':'<span class="ft-l"></span>'):'<span class="ad-none">Sem foto do antes</span>')+'<em>ANTES</em></div>';
+  h+='<label class="ad-s cam"><input type="file" accept="image/*" capture="environment" data-ad="1" hidden><span class="ad-ic">'+li("cam",34)+'</span><b>'+(F.fase==="antes"?"Tirar foto do antes":"Tirar foto do depois")+'</b><em>'+(F.fase==="antes"?"ANTES":"DEPOIS")+'</em></label>';
+  h+='</div>';
+  h+='<button class="b2 line" data-act="adPular" style="width:100%">'+(F.fase==="antes"?"Começar sem foto":"Concluir sem foto")+'</button>';
+  return h+'</div>';
+}
+function sheetCmp(F){
+  const a=F.a&&fotoSrc(F.a), d=F.d&&fotoSrc(F.d);
+  let h='<div class="sheet-h"><div><h2 id="shT">Antes e depois</h2><div class="sub" style="font-size:13px">'+esc(F.t||"")+'</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b">';
+  if(a&&d){
+    h+='<div class="cmp" style="--x:50%"><img src="'+esc(d)+'" alt="Depois"><div class="cmp-a"><img src="'+esc(a)+'" alt="Antes"></div><i class="cmp-ln"></i><span class="cmp-l a">ANTES</span><span class="cmp-l d">DEPOIS</span>'+
+      '<label class="sr" for="cmpR">Arraste para comparar</label><input id="cmpR" class="cmp-r" type="range" min="0" max="100" value="50" data-in="cmp"></div><p class="hint" style="text-align:center">Arraste para os lados para comparar</p>';
+  }
+  h+='<div class="ad-g two">'+[[F.a,a,"ANTES",F.ta],[F.d,d,"DEPOIS",F.td]].map(([p,src,l,em])=>'<div class="ad-s done">'+(p?(src?'<img src="'+esc(src)+'" alt="'+l+'">':'<span class="ft-l"></span>'):'<span class="ad-none">Sem foto</span>')+'<em>'+l+(em?' · '+fmtT(em):'')+'</em></div>').join("")+'</div>';
+  if(F.ta&&F.td){ const m=durMin(F.ta,F.td); if(m>0&&m<60*24*7) h+='<p class="hint" style="text-align:center">Levou '+fmtMin(m)+' entre as fotos</p>'; }
+  return h+'</div>';
+}
+async function adFoto(file){
+  const F=S.form; if(!F||F.type!=="ad"||!file) return;
+  F.busy=true; refreshSheet();
+  let f=null;
+  try{ const blob=await shrink(file,1600,.75); f=await uploadFoto(blob); f.fase=F.fase; S.urls[f.path]=URL.createObjectURL(blob); }
+  catch(e){ F.busy=false; refreshSheet(); toast("Sem internet para enviar a foto. Tente de novo ou pule."); return; }
+  adFim(F, f);
+}
+function adFim(F, f){
+  const t=todayStr();
+  if(F.alvo==="os"){
+    const o0=S.os.find(x=>x.id===F.id); if(!o0){ closeSheet(); return; }
+    const antesO=clone(o0), o=clone(o0);
+    if(f){ o.fotos=(o.fotos||[]).concat([f]); hist(o, F.fase==="antes"?"📷 Foto do antes":"📷 Foto do depois"); }
+    if(F.fase==="depois"){ setStatus(o,"concluida"); write("os",o); closeSheet(); haptic(); toastUndo("Terminado!", ()=>write("os",antesO));
+      const a=myAtiv(); if(a && a.local===o.local && !S.os.some(x=>x.id!==o.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&ehDe(x,S.me))) endWork(true); }
+    else { if(f) write("os",o); closeSheet(); toast(f?"Foto do antes salva. Bom trabalho!":"Começou", true); }
+    return;
+  }
+  const r0=S.prev.find(x=>x.id===F.id); if(!r0){ closeSheet(); return; }
+  const q=clone(r0);
+  if(F.fase==="antes"){ q.ini=q.ini||{}; q.ini={[t]:{em:nowISO(), por:S.me||"", antes:f||null}}; write("preventivas",q); closeSheet(); haptic(); toast(f?"Foto do antes salva. Bom trabalho!":"Começou", true); return; }
+  q.feitas=q.feitas||{}; const ini=(q.ini||{})[t]||{};
+  q.feitas[t]={por:S.me||"", em:nowISO(), inicio:ini.em||"", antes:ini.antes||null, depois:f||null};
+  if(q.ini) delete q.ini[t];
+  const ks=Object.keys(q.feitas).sort(); if(ks.length>400) ks.slice(0,ks.length-400).forEach(k=>delete q.feitas[k]);
+  write("preventivas",q); closeSheet(); haptic();
+  const id=q.id; toastUndo("Feito!", ()=>{ const x=S.prev.find(y=>y.id===id); if(!x) return; const z=clone(x); if(z.feitas) delete z.feitas[t]; write("preventivas",z); });
 }
 /* ===================== OS ===================== */
 function nextNum(){ return S.os.filter(inUnit).reduce((m,o)=>Math.max(m,o.numero||0),0)+1; }
@@ -2759,7 +2861,7 @@ function rotItem(r,date,compact){
   return '<div class="rt'+(f?" done":"")+'">'+
     '<button class="ck'+(f?" on":"")+'" data-act="rotDone" data-id="'+r.id+'"'+(canCheck?'':' disabled')+' aria-label="'+(f?"Desmarcar":"Marcar como feita")+'">'+(f?"✓":"")+'</button>'+
     '<div class="rt-b"'+(canEditRot(r)&&!compact?' data-act="editRot" data-id="'+r.id+'" role="button" tabindex="0"':'')+'><div class="rt-t">'+esc(r.titulo)+'</div>'+
-    '<div class="rt-m">'+esc(r.local?localLabel(r.local):(r.dias||[]).length===7?"Todo dia":(r.dias||[]).map(d=>DOWN[d]).join(", "))+' · '+esc(r.responsavel||"Equipe do setor")+'</div><div class="rt-s '+st.k+'">'+esc(st.t)+'</div></div>'+
+    '<div class="rt-m">'+esc(r.local?localLabel(r.local):(r.dias||[]).length===7?"Todo dia":(r.dias||[]).map(d=>DOWN[d]).join(", "))+' · '+esc(r.responsavel||"Equipe do setor")+'</div><div class="rt-s '+st.k+'">'+esc(st.t)+'</div>'+(f&&(f.antes||f.depois)?adMini(f.antes,f.depois,r.titulo):(!f&&r.ini&&r.ini[date]&&r.ini[date].antes?adMini(r.ini[date].antes,null,r.titulo):''))+'</div>'+
     (canEditRot(r)&&!compact?'<button class="rt-ed" data-act="editRot" data-id="'+r.id+'" aria-label="Editar rotina"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg></button>':'')+'</div>';
 }
 function vRot(){
@@ -2935,7 +3037,7 @@ function closeSheet(){
 function refreshSheet(){
   const el=document.getElementById("sheetIn"); if(!el||!S.form) return;
   const ae=document.activeElement, aid=ae&&ae.id, sel=ae&&ae.selectionStart, sc=el.parentElement.scrollTop, F=S.form;
-  el.innerHTML = F.type==="os" ? sheetOS(F) : F.type==="local" ? sheetLocal(F) : F.type==="prev" ? sheetPrev(F) : F.type==="rot" ? sheetRot(F) : F.type==="aviso" ? sheetAviso(F) : F.type==="foto" ? sheetFoto(F) : F.type==="relm" ? sheetRelM(F) : F.type==="fo" ? sheetFO(F) : F.type==="tec" ? sheetTec(F) : F.type==="arq" ? sheetArq(F) : F.type==="cham" ? sheetCham(F) : F.type==="pvitens" ? sheetPrevItens(F) : F.type==="rel" ? sheetRel(F) : F.type==="guia" ? sheetGuia(F) : F.type==="fim" ? sheetFim(F) : F.type==="resetpw" ? sheetResetPw(F) : F.type==="conta" ? sheetConta() : F.type==="senha" ? sheetSenha() : F.type==="tema" ? sheetTema() : F.type==="unit" ? sheetUnit(F) : F.type==="areas" ? sheetAreas() : "";
+  el.innerHTML = F.type==="os" ? sheetOS(F) : F.type==="local" ? sheetLocal(F) : F.type==="prev" ? sheetPrev(F) : F.type==="rot" ? sheetRot(F) : F.type==="aviso" ? sheetAviso(F) : F.type==="foto" ? sheetFoto(F) : F.type==="ad" ? sheetAD(F) : F.type==="cmp" ? sheetCmp(F) : F.type==="relm" ? sheetRelM(F) : F.type==="fo" ? sheetFO(F) : F.type==="tec" ? sheetTec(F) : F.type==="arq" ? sheetArq(F) : F.type==="cham" ? sheetCham(F) : F.type==="pvitens" ? sheetPrevItens(F) : F.type==="rel" ? sheetRel(F) : F.type==="guia" ? sheetGuia(F) : F.type==="fim" ? sheetFim(F) : F.type==="resetpw" ? sheetResetPw(F) : F.type==="conta" ? sheetConta() : F.type==="senha" ? sheetSenha() : F.type==="tema" ? sheetTema() : F.type==="unit" ? sheetUnit(F) : F.type==="areas" ? sheetAreas() : "";
   enhanceSelects(el);
   el.parentElement.scrollTop=sc;
   if(aid){ const n=document.getElementById(aid); if(n){ n.focus({preventScroll:true}); try{ if(sel!=null&&n.setSelectionRange) n.setSelectionRange(sel,sel); }catch(e){} } }
@@ -3005,6 +3107,7 @@ function sheetOS(F){
     h+=smartBox(F, chefe?"O que aconteceu? Ex.: suíte 12, ar não está gelando":"O que você viu? Ex.: suíte 12, chuveiro pingando");
   }
 
+  if(!isNew){ const ad=adPar(o.fotos); h+=adBloco(ad.antes, ad.depois, o.titulo); }
   if(!isNew && tri && chefe){
     const s=o.iaSugestao;
     h+='<div class="triage"><div class="triage-h"><b>Avaliar relato</b><span>Escolha a urgência e quem resolve. Depois disso vai para a fila.</span></div>'+
@@ -3150,6 +3253,9 @@ const A = {
   hv(el){ S.hv=el.dataset.v; render(); },
   exportCsv(){ exportCsv(); },
   install(){ doInstall(); },
+  adPular(){ const F=S.form; if(!F||F.type!=="ad"||F.busy) return; adFim(F, null); },
+  cmp(el){ const d=el.dataset; if(!d.a&&!d.d) return; openSheet({type:"cmp", a:d.a, d:d.d, t:d.t, ta:d.ta, td:d.td, back:S.form&&S.form.type!=="cmp"?S.form:null}); },
+  rotAD(){ const F=S.form; F.o.antesDepois=!F.o.antesDepois; refreshSheet(); },
   relOpen(){ if(!isChefe()) return; openSheet({type:"relm", ym:todayStr().slice(0,7)}); },
   relMes(el){ const F=S.form, [y,m]=F.ym.split("-").map(Number), d=new Date(y,m-1+(+el.dataset.v),1), ym=d.getFullYear()+"-"+pad(d.getMonth()+1); if(ym>todayStr().slice(0,7)) return; F.ym=ym; refreshSheet(); },
   relPdf(){ document.body.classList.add("printing"); setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove("printing"),500); },50); },
@@ -3230,9 +3336,12 @@ const A = {
     toast(completo?"🎉 Preventiva completa! Todas as "+it.length+" feitas.":ls.length+(ls.length>1?" suítes registradas":" suíte registrada")+" · faltam "+(it.length-done), true); },
   undo(){ const f=S.undo; S.undo=null; document.getElementById("toast").classList.remove("on"); if(f){ f(); haptic(); } },
   relLocal(el){ const F=S.form; F.o.local=el.dataset.v; (F.touched=F.touched||{}).local=true; haptic(); refreshSheet(); },
-  tstart(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=setStatus(clone(o),"andamento"); if(!c.responsavel) c.responsavel=S.me; write("os",c); haptic(); toastUndo("Começou", ()=>write("os",antes));
-    if(c.local && S.me && (!myAtiv()||myAtiv().local!==c.local)) startWork(c.local,true); },
-  async tdone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=setStatus(clone(o),"concluida"); write("os",c); haptic(); toastUndo("Terminado!", ()=>write("os",antes));
+  tstart(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=setStatus(clone(o),"andamento"); if(!c.responsavel) c.responsavel=S.me; write("os",c); haptic();
+    if(c.local && S.me && (!myAtiv()||myAtiv().local!==c.local)) startWork(c.local,true);
+    if(S.role==="tecnico" && !adPar(c.fotos).antes){ openSheet({type:"ad", fase:"antes", alvo:"os", id:c.id, titulo:c.titulo, local:c.local}); return; }
+    toastUndo("Começou", ()=>write("os",antes)); },
+  async tdone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return;
+    if(S.role==="tecnico"){ openSheet({type:"ad", fase:"depois", alvo:"os", id:o.id, titulo:o.titulo, local:o.local, antes:adPar(o.fotos).antes}); return; } const antes=clone(o); const c=setStatus(clone(o),"concluida"); write("os",c); haptic(); toastUndo("Terminado!", ()=>write("os",antes));
     const a=myAtiv(); if(a && a.local===c.local && !S.os.some(x=>x.id!==c.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&ehDe(x,S.me))) endWork(true); },
   mdDone(){ S.mdDone=!S.mdDone; render(); },
   guia(){ openSheet({type:"guia", i:0}); },
@@ -3322,7 +3431,7 @@ const A = {
   local(el){ openSheet({type:"local", local:el.dataset.local}); },
   foto(el){ const src=S.urls[el.dataset.p]; if(src) openSheet(Object.assign({type:"foto", src, back:S.form})); },
   unpend(el){ const F=S.form, p=F.pend.splice(+el.dataset.i,1)[0]; if(p) URL.revokeObjectURL(p.url); refreshSheet(); },
-  close(){ const F=S.form; if(F&&F.type==="foto"&&F.back){ S.form=F.back; refreshSheet(); return; } closeSheet(); },
+  close(){ const F=S.form; if(F&&(F.type==="foto"||F.type==="cmp")&&F.back){ S.form=F.back; refreshSheet(); return; } closeSheet(); },
   veil(el,e){ if(e.target===el) A.close(); },
   more(){ S.form.more=!S.form.more; refreshSheet(); },
   voice(){ toggleVoice(); },
@@ -3380,6 +3489,7 @@ const A = {
   rotDay(el){ S.rot.day=+el.dataset.v; render(); },
   rotMine(el){ S.rot.mine=el.dataset.v==="1"; render(); },
   rotDone(el){ const r=S.prev.find(x=>x.id===el.dataset.id); if(!r) return; const t=todayStr(), q=clone(r); q.feitas=q.feitas||{};
+    if(!q.feitas[t] && r.antesDepois && S.role==="tecnico"){ const ini=r.ini&&r.ini[t]; openSheet({type:"ad", fase:ini?"depois":"antes", alvo:"rot", id:r.id, titulo:r.titulo, local:r.local, antes:ini?ini.antes:null}); return; }
     if(q.feitas[t]){ if(q.feitas[t].por && q.feitas[t].por!==S.me && !isChefe()){ toast("Marcada por "+first(q.feitas[t].por)); return; } delete q.feitas[t]; }
     else { q.feitas[t]={por:S.me||"", em:nowISO()}; haptic(); const id=r.id; toastUndo("Feito!", ()=>{ const x=S.prev.find(y=>y.id===id); if(!x) return; const z=clone(x); if(z.feitas) delete z.feitas[t]; write("preventivas",z); }); }
     const ks=Object.keys(q.feitas).sort(); if(ks.length>400) ks.slice(0,ks.length-400).forEach(k=>delete q.feitas[k]);
@@ -3429,6 +3539,7 @@ document.addEventListener("click", e=>{
   if(A[a]){ if(a!=="veil" && a!=="ck") e.preventDefault(); A[a](el,e); }
 });
 document.addEventListener("input", e=>{
+  if(e.target && e.target.dataset && e.target.dataset.in==="cmp"){ const c=e.target.closest(".cmp"); if(c) c.style.setProperty("--x", e.target.value+"%"); return; }
   const el=e.target, F=S.form;
   if(el.dataset.mask==="cpf"){ el.value=maskCpf(el.value); return; }
   if(!F) return;
@@ -3446,6 +3557,7 @@ document.addEventListener("input", e=>{
 });
 document.addEventListener("change", e=>{
   const el=e.target, F=S.form;
+  if(el.dataset.ad){ const f=el.files&&el.files[0]; el.value=""; adFoto(f); return; }
   if(el.dataset.photo){ handlePhotos(el.files); el.value=""; return; }
   if(el.dataset.ch==="unit"){ S.unit=el.value; try{ localStorage.setItem(LS_UNIT,S.unit); }catch(x){} render(); return; }
   if(el.dataset.ch==="fresp"){ S.f.resp=el.value; render(); return; }
