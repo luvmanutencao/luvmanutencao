@@ -1057,6 +1057,8 @@ img{-webkit-user-drag:none;user-select:none}
 .ad-opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
 .ad-opt input{width:20px;height:20px;margin-top:2px;accent-color:var(--brass);flex:none}
 .ad-opt b{display:block;font-size:14.5px} .ad-opt small{font-size:12.5px;color:var(--ink-3)}
+.b2.ghost2{background:transparent;color:var(--ink-3);font-weight:600;min-height:40px}
+.pp .pp-l{text-align:left;margin:-4px 0 -2px;font-size:12.5px}
 .days{display:flex;gap:6px;flex-wrap:wrap}
 .days .pk{min-width:48px;text-align:center}
 .me-row{display:flex;gap:12px;align-items:center}
@@ -2111,7 +2113,7 @@ function sheetTec(F){
   const B=(a,lab,cls,ico)=>'<button class="b2 '+cls+'" data-act="'+a+'">'+(ico||"")+lab+'</button>';
   const BI=(a,lab,cls,ico)=>'<button class="b2 '+cls+'" data-act="'+a+'" data-id="'+o.id+'">'+(ico||"")+lab+'</button>';
   let bar = o.status==="aberta" ? BI("tstart","Começar","go",li("play",14,"#fff"))
-    : o.status==="andamento" ? B("st_aguardando","Aguardando peça","line",li("clock",17))+BI("tdone","Concluir","ok big",li("check",18,"#fff",2.4))
+    : o.status==="andamento" ? BI("tvoltar","Voltar","line",li("undo",17))+B("st_aguardando","Peça","line",li("clock",17))+BI("tdone","Concluir","ok big",li("check",18,"#fff",2.4))
     : o.status==="aguardando" ? B("st_andamento","Peça chegou","line",li("undo",17))+BI("tdone","Concluir","ok big",li("check",18,"#fff",2.4))
     : podeReabrir(o) ? B("reabrirF","Reabrir (concluí por engano)","line",li("undo",17)) : "";
   if(o.prevId&&prevMulti(S.prev.find(x=>x.id===o.prevId))&&isOpen(o)) bar='<button class="b2 go" data-act="pvOpen" data-id="'+o.prevId+'">Marcar suítes feitas</button>';
@@ -2150,12 +2152,13 @@ function cardPP(it){
   if(it.k==="os"){ const o=it.o, k=cor(o), and=o.status==="andamento", agu=o.status==="aguardando";
     const tg=urgOf(o.prioridade)===1?'<span class="tg tg-rs">URGENTE</span>':sem(o).k==="r"?'<span class="tg tg-r">ATRASADA</span>':'';
     return '<div class="pp t-'+k+'"><div class="pp-h" data-act="open" data-id="'+o.id+'" role="button" tabindex="0"><span class="pp-i">'+catIcon(o.categoria,22)+'</span><span class="pp-t"><b>'+esc(o.titulo)+'</b><span>'+esc(localLabel(o.local))+(o.origem==="recepcao"?" · pedido da recepção":"")+((o.ajudantes||[]).length?" · com "+esc([o.responsavel].concat(o.ajudantes).filter(n=>n&&n!==S.me).map(first).join(", ")):"")+'</span></span>'+tg+'</div>'+
+      (and?'<button class="pp-l" data-act="tvoltar" data-id="'+o.id+'">↩ Comecei sem querer · voltar para a fazer</button>':'')+
       (agu?B("open",o.id,li("clock",19)+" ESPERANDO PEÇA","n"):and?B("tdone",o.id,li("check",20,"#fff",2.6)+" PRONTO","ok"):B("tstart",o.id,"▶ FAZER","go"))+'</div>'; }
   if(it.k==="rot"){ const r=it.r, ini=r.antesDepois&&r.ini&&r.ini[todayStr()];
     const btn = !r.antesDepois ? B("rotDone",r.id,li("check",20,"#fff",2.6)+" PRONTO","ok")
       : ini ? B("rotDone",r.id,li("cam",20,"#fff")+" PRONTO · FOTO DO DEPOIS","ok") : B("rotDone",r.id,li("cam",20,"#fff")+" COMEÇAR · FOTO DO ANTES","go");
     return '<div class="pp t-y"><div class="pp-h"><span class="pp-i">'+li("list",22)+'</span><span class="pp-t"><b>'+esc(r.titulo)+'</b><span>Rotina'+(r.hora?" · "+esc(r.hora):"")+(r.local?" · "+esc(localLabel(r.local)):"")+(ini?" · começou às "+fmtT(ini.em):"")+'</span></span>'+(r.antesDepois?'<span class="tg tg-p">ANTES E DEPOIS</span>':'')+'</div>'+
-      (ini&&ini.antes?adMini(ini.antes,null,r.titulo):'')+btn+'</div>'; }
+      (ini&&ini.antes?adMini(ini.antes,null,r.titulo):'')+(ini?'<button class="pp-l" data-act="rvoltar" data-id="'+r.id+'">↩ Comecei sem querer · voltar para a fazer</button>':'')+btn+'</div>'; }
   const p=it.p;
   if(prevMulti(p)){ const nx=pvProxima(p), pr=prevProg(p), lab=nx?(nx.startsWith("S:")?"SUÍTE "+nx.slice(2):localLabel(nx).toUpperCase()):"";
     return '<div class="pp t-p"><div class="pp-h"><span class="pp-i">'+catIcon(p.categoria,22)+'</span><span class="pp-t"><b>'+esc(p.titulo)+'</b><span>Preventiva · '+pr.n+' de '+pr.t+' feitas</span></span></div>'+
@@ -2400,7 +2403,7 @@ function adBloco(antes, depois, titulo){
 function sheetAD(F){
   const antes=F.fase==="depois"?F.antes:null, src=antes&&fotoSrc(antes.path);
   const tit=F.fase==="antes"?"Foto do ANTES":"Foto de como FICOU";
-  const sub=F.fase==="antes"?"Mostre como está antes de começar.":"Agora mostre o resultado do serviço.";
+  const sub=F.fase==="antes"?"A tarefa só começa quando você tirar a foto ou tocar em Começar. Tocou sem querer? É só voltar.":"Agora mostre o resultado do serviço.";
   let h='<div class="sheet-h"><div><h2 id="shT">'+tit+'</h2><div class="sub" style="font-size:13px">'+esc(F.titulo||"")+(F.local?' · '+esc(localLabel(F.local)):'')+'</div></div><button class="close" data-act="close" aria-label="Fechar">×</button></div><div class="sheet-b ad">';
   if(F.busy) return h+'<div class="ad-busy"><span class="spin"></span><b>Salvando a foto…</b></div></div>';
   h+='<p class="ad-sub">'+sub+'</p>';
@@ -2409,6 +2412,7 @@ function sheetAD(F){
   h+='<label class="ad-s cam"><input type="file" accept="image/*" capture="environment" data-ad="1" hidden><span class="ad-ic">'+li("cam",34)+'</span><b>'+(F.fase==="antes"?"Tirar foto do antes":"Tirar foto do depois")+'</b><em>'+(F.fase==="antes"?"ANTES":"DEPOIS")+'</em></label>';
   h+='</div>';
   h+='<button class="b2 line" data-act="adPular" style="width:100%">'+(F.fase==="antes"?"Começar sem foto":"Concluir sem foto")+'</button>';
+  if(F.fase==="antes") h+='<button class="b2 ghost2" data-act="close" style="width:100%">Agora não, voltar</button>';
   return h+'</div>';
 }
 function sheetCmp(F){
@@ -2430,6 +2434,13 @@ async function adFoto(file){
   catch(e){ F.busy=false; refreshSheet(); toast("Sem internet para enviar a foto. Tente de novo ou pule."); return; }
   adFim(F, f);
 }
+function osComecar(o, f){
+  const antes=clone(o), c=setStatus(clone(o),"andamento"); if(!c.responsavel) c.responsavel=S.me;
+  if(f){ c.fotos=(c.fotos||[]).concat([f]); hist(c,"📷 Foto do antes"); }
+  write("os",c); haptic();
+  if(c.local && S.me && (!myAtiv()||myAtiv().local!==c.local)) startWork(c.local,true);
+  toastUndo(f?"Começou · foto do antes salva":"Começou", ()=>write("os",antes));
+}
 function adFim(F, f){
   const t=todayStr();
   if(F.alvo==="os"){
@@ -2438,7 +2449,7 @@ function adFim(F, f){
     if(f){ o.fotos=(o.fotos||[]).concat([f]); hist(o, F.fase==="antes"?"📷 Foto do antes":"📷 Foto do depois"); }
     if(F.fase==="depois"){ setStatus(o,"concluida"); write("os",o); closeSheet(); haptic(); toastUndo("Terminado!", ()=>write("os",antesO));
       const a=myAtiv(); if(a && a.local===o.local && !S.os.some(x=>x.id!==o.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&ehDe(x,S.me))) endWork(true); }
-    else { if(f) write("os",o); closeSheet(); toast(f?"Foto do antes salva. Bom trabalho!":"Começou", true); }
+    else { closeSheet(); if(o0.status==="andamento"){ if(f) write("os",o); toast("Foto do antes salva", true); } else osComecar(o0, f); }
     return;
   }
   const r0=S.prev.find(x=>x.id===F.id); if(!r0){ closeSheet(); return; }
@@ -3336,10 +3347,14 @@ const A = {
     toast(completo?"🎉 Preventiva completa! Todas as "+it.length+" feitas.":ls.length+(ls.length>1?" suítes registradas":" suíte registrada")+" · faltam "+(it.length-done), true); },
   undo(){ const f=S.undo; S.undo=null; document.getElementById("toast").classList.remove("on"); if(f){ f(); haptic(); } },
   relLocal(el){ const F=S.form; F.o.local=el.dataset.v; (F.touched=F.touched||{}).local=true; haptic(); refreshSheet(); },
-  tstart(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return; const antes=clone(o); const c=setStatus(clone(o),"andamento"); if(!c.responsavel) c.responsavel=S.me; write("os",c); haptic();
-    if(c.local && S.me && (!myAtiv()||myAtiv().local!==c.local)) startWork(c.local,true);
-    if(S.role==="tecnico" && !adPar(c.fotos).antes){ openSheet({type:"ad", fase:"antes", alvo:"os", id:c.id, titulo:c.titulo, local:c.local}); return; }
-    toastUndo("Começou", ()=>write("os",antes)); },
+  tstart(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return;
+    if(S.role==="tecnico"){ haptic(); openSheet({type:"ad", fase:"antes", alvo:"os", id:o.id, titulo:o.titulo, local:o.local, inicio:true}); return; }
+    osComecar(o, null); },
+  tvoltar(el){ const id=el.dataset.id||(S.form&&S.form.o&&S.form.o.id); const o=S.os.find(x=>x.id===id); if(!o||o.status!=="andamento") return;
+    const c=clone(o); c.status="aberta"; delete c.iniciadoEm; hist(c,"Voltou para a fazer (começou sem querer)"); write("os",c); haptic();
+    const a=myAtiv(); if(a && a.local===c.local && !S.os.some(x=>x.id!==c.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&ehDe(x,S.me))) endWork(true);
+    if(S.form && S.form.o && S.form.o.id===c.id) closeSheet(); toast("Voltou para a fazer", true); },
+  rvoltar(el){ const r=S.prev.find(x=>x.id===el.dataset.id); if(!r||!r.ini) return; const q=clone(r); delete q.ini[todayStr()]; write("preventivas",q); haptic(); toast("Voltou para a fazer", true); },
   async tdone(el){ const o=S.os.find(x=>x.id===el.dataset.id); if(!o) return;
     if(S.role==="tecnico"){ openSheet({type:"ad", fase:"depois", alvo:"os", id:o.id, titulo:o.titulo, local:o.local, antes:adPar(o.fotos).antes}); return; } const antes=clone(o); const c=setStatus(clone(o),"concluida"); write("os",c); haptic(); toastUndo("Terminado!", ()=>write("os",antes));
     const a=myAtiv(); if(a && a.local===c.local && !S.os.some(x=>x.id!==c.id&&inUnit(x)&&x.local===a.local&&x.status==="andamento"&&ehDe(x,S.me))) endWork(true); },
