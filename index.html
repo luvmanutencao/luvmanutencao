@@ -3636,7 +3636,28 @@ if("serviceWorker" in navigator && location.protocol==="https:") navigator.servi
   const whenReady=()=>{ const wait=Math.max(0,700-(Date.now()-t0)); setTimeout(go, wait); };
   if(S.isReady) whenReady(); else document.addEventListener("luv-ready", whenReady, {once:true});
   sp.addEventListener("click", go); setTimeout(go, 3000); })();
+/* ===================== BOTÃO VOLTAR DO CELULAR ===================== */
+(function(){
+  if(!window.history || !history.pushState) return;
+  let armado=false, tmr=null;
+  const guarda=()=>{ try{ history.pushState({luv:"guarda"}, "", location.href); }catch(e){} };
+  try{ history.replaceState({luv:"base"}, "", location.href); }catch(e){}
+  guarda();
+  window.addEventListener("popstate", ()=>{
+    // sem login: deixa sair normalmente
+    const login=document.getElementById("login"); if(login && !login.hidden && login.offsetParent!==null){ history.back(); return; }
+    // 1) tela por cima aberta: fecha (foto/comparação voltam para a tela de antes)
+    if(S.form){ try{ A.close(); }catch(e){ closeSheet(); } guarda(); return; }
+    // 2) outra aba: volta para a inicial
+    if(S.tab && S.tab!=="painel"){ S.tab="painel"; render(); window.scrollTo({top:0}); guarda(); return; }
+    // 3) rolou a tela: sobe primeiro
+    if(window.scrollY>200){ window.scrollTo({top:0,behavior:"smooth"}); guarda(); return; }
+    // 4) tela inicial: pede o segundo toque para sair
+    if(!armado){ armado=true; toast("Toque voltar de novo para sair"); clearTimeout(tmr); tmr=setTimeout(()=>{ armado=false; guarda(); },2500); return; }
+  });
 })();
+})();
+
 
 </script>
 </body>
